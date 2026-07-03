@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la ~/Library/Logs/Unity/ 2>/dev/null | head; echo ---; grep -E \"error CS|Assets/.*\\\\.cs\\\\\\([0-9]+\" ~/Library/Logs/Unity/Editor.log 2>/dev/null | sort -u | head -60)",
+      "Bash(grep -o \"m_Script: {fileID: 11500000, guid: [a-f0-9]*\" Assets/Game.unity)",
+      "Bash(awk '{print $NF}')",
+      "Bash(grep -v \"^UnityEditor\\\\|^UnityEngine\\\\|^$\")",
+      "Bash(grep -nA8 \"m_AlwaysIncludedShaders\" ProjectSettings/GraphicsSettings.asset)",
+      "Bash(sed -i '' 's/  - {fileID: 10783, guid: 0000000000000000f000000000000000, type: 0}/  - {fileID: 10783, guid: 0000000000000000f000000000000000, type: 0}\\\\n  - {fileID: 46, guid: 0000000000000000f000000000000000, type: 0}/' ProjectSettings/GraphicsSettings.asset)",
+      "Bash(grep -nA9 \"m_AlwaysIncludedShaders\" ProjectSettings/GraphicsSettings.asset)",
+      "Bash(awk '/public static .*BuildCharacter/,/^        }$/' Assets/Scripts/Engine/PrimitiveFactory.cs)",
+      "Bash(find . -maxdepth 2 -iname \"package.json\" -not -path \"*/node_modules/*\" -not -path \"*/Library/*\")",
+      "Bash(find . -maxdepth 2 \\\\\\( -iname \"requirements.txt\" -o -iname \"pyproject.toml\" \\\\\\) -not -path \"*/Library/*\")",
+      "Bash(find . -maxdepth 2 -iname \"docker-compose*\" -not -path \"*/Library/*\")",
+      "Bash(find . -maxdepth 2 -iname \"Procfile\" -not -path \"*/Library/*\")",
+      "Bash(cat .claude/launch.json)",
+      "Bash(rm -rf MiniMart.app)",
+      "Bash(rm -f Assets/MiniMartgame.unity Assets/MiniMartgame.unity.meta)"
+    ]
+  }
+}

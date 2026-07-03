@@ -9,47 +9,42 @@ namespace MiniMart.Catalog
     /// </summary>
     public static class RoleCatalog
     {
+        // All curves follow GDD 3.1 (levels/stacks) and GDD 6.2 (cost ladders).
+        // Cost arrays are "cost to REACH this level" (level 1 = 0, it's the starting level).
+
+        private static UpgradeCurve Build(int[] stacks, float[] speeds, int[] costs)
+        {
+            var curve = new UpgradeCurve();
+            for (int i = 0; i < stacks.Length; i++)
+                curve.Steps.Add(new UpgradeStep(i + 1, stacks[i], speeds[i], costs[i]));
+            return curve;
+        }
+
         // ---- Player: lvl1 stack4 -> lvl5 stack7, speed rises every level, always fastest. ----
-        public static UpgradeCurve PlayerCurve()
-        {
-            var costs = UpgradeCurve.BuildCostProgression(5); // levels 1..5
-            var curve = new UpgradeCurve();
-            int[] stacks = { 4, 5, 6, 6, 7 };
-            float[] speeds = { 1.30f, 1.45f, 1.60f, 1.75f, 1.90f }; // always above every NPC curve below
-            for (int i = 0; i < 5; i++)
-                curve.Steps.Add(new UpgradeStep(i + 1, stacks[i], speeds[i], costs[i]));
-            return curve;
-        }
+        public static UpgradeCurve PlayerCurve() => Build(
+            new[] { 4, 4, 5, 6, 7 },                          // GDD 3.1 player table
+            new[] { 1.30f, 1.45f, 1.60f, 1.75f, 1.90f },      // always above every NPC curve below
+            new[] { 0, 50, 100, 200, 500 });
 
-        // ---- Shelver 1: stack 3 -> 5, speed increases every upgrade. (3 levels) ----
-        public static UpgradeCurve Shelver1Curve()
-        {
-            var costs = UpgradeCurve.BuildCostProgression(3);
-            var curve = new UpgradeCurve();
-            int[] stacks = { 3, 4, 5 };
-            float[] speeds = { 1.0f, 1.15f, 1.3f };
-            for (int i = 0; i < 3; i++)
-                curve.Steps.Add(new UpgradeStep(i + 1, stacks[i], speeds[i], costs[i]));
-            return curve;
-        }
+        // ---- Shelver 1 & 2: stack 3 -> 5 over 5 levels, speed rises every upgrade. ----
+        public static UpgradeCurve Shelver1Curve() => Build(
+            new[] { 3, 3, 4, 4, 5 },
+            new[] { 1.0f, 1.15f, 1.3f, 1.45f, 1.6f },
+            new[] { 0, 50, 100, 200, 500 });
 
-        // ---- Shelver 2: mirrors Shelver 1 shape (wheat / flour / bread route). ----
         public static UpgradeCurve Shelver2Curve() => Shelver1Curve();
 
-        // ---- Chef: ceiling must be >= shelver ceiling. Give chef one extra level & higher speed cap. ----
-        public static UpgradeCurve ChefCurve()
-        {
-            var costs = UpgradeCurve.BuildCostProgression(4);
-            var curve = new UpgradeCurve();
-            int[] stacks = { 3, 4, 5, 6 };
-            float[] speeds = { 1.0f, 1.15f, 1.3f, 1.45f }; // top speed (1.45) >= shelver top (1.3)
-            for (int i = 0; i < 4; i++)
-                curve.Steps.Add(new UpgradeStep(i + 1, stacks[i], speeds[i], costs[i]));
-            return curve;
-        }
+        // ---- Chef: the premium worker. Cost ladder must top out >= shelvers (GDD 6.2). ----
+        public static UpgradeCurve ChefCurve() => Build(
+            new[] { 3, 4, 4, 5, 6 },
+            new[] { 1.0f, 1.15f, 1.3f, 1.45f, 1.6f },
+            new[] { 0, 200, 500, 1000, 2000 });
 
-        // ---- Farmer: manages hens, wheat, tomato — same general shape as chef. ----
-        public static UpgradeCurve FarmerCurve() => ChefCurve();
+        // ---- Farmer: manages hens, wheat, tomato — chef stats, mid-tier cost. ----
+        public static UpgradeCurve FarmerCurve() => Build(
+            new[] { 3, 4, 4, 5, 6 },
+            new[] { 1.0f, 1.15f, 1.3f, 1.45f, 1.6f },
+            new[] { 0, 100, 200, 500, 1000 });
 
         /// <summary>What each shelver role is responsible for stocking, per spec Section 1.</summary>
         public static readonly Dictionary<RoleType, ItemType[]> RoleResponsibilities = new Dictionary<RoleType, ItemType[]>

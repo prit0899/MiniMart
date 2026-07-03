@@ -11,7 +11,7 @@ namespace MiniMart.Production
     {
         private GrowthSlot[] hens;
         private UpgradeCurve curve;
-        private int level = 1;
+        public int Level { get; private set; } = 1;
 
         private void InitializeIfNeeded()
         {
@@ -29,7 +29,7 @@ namespace MiniMart.Production
         private void RebuildSlots()
         {
             if (hens == null) return;
-            var step = curve.GetStep(level);
+            var step = curve.GetStep(Level);
             float secondsPerUnit = FarmCatalog.EggGrowSecondsPerUnit / step.speedMultiplier;
             for (int i = 0; i < hens.Length; i++)
             {
@@ -42,16 +42,26 @@ namespace MiniMart.Production
         public void ApplyLevel(int newLevel)
         {
             InitializeIfNeeded();
-            level = Mathf.Clamp(newLevel, 1, curve.MaxLevel);
+            Level = Mathf.Clamp(newLevel, 1, curve.MaxLevel);
             RebuildSlots();
+        }
+
+        /// <summary>Cost of the next level, or -1 at max. Read-only — safe for UI polling.</summary>
+        public int NextUpgradeCost
+        {
+            get
+            {
+                InitializeIfNeeded();
+                return curve.CostForNextLevel(Level);
+            }
         }
 
         public bool TryUpgrade(out int cost)
         {
             InitializeIfNeeded();
-            cost = curve.CostForNextLevel(level);
+            cost = curve.CostForNextLevel(Level);
             if (cost < 0) return false;
-            ApplyLevel(level + 1);
+            ApplyLevel(Level + 1);
             return true;
         }
 
@@ -59,6 +69,14 @@ namespace MiniMart.Production
         {
             InitializeIfNeeded();
             foreach (var h in hens) h.Tick(Time.deltaTime);
+        }
+
+        public int TotalEggsReady()
+        {
+            InitializeIfNeeded();
+            int sum = 0;
+            foreach (var h in hens) sum += h.Count;
+            return sum;
         }
 
         public int Collect(int amount)

@@ -16,7 +16,7 @@ namespace MiniMart.Economy
         public int CounterIndex; // 1 or 2
         public bool IsUnlocked;
         public bool HasCashier;
-        public Queue<Buyer> Line = new Queue<Buyer>();
+        [System.NonSerialized] public Queue<Buyer> Line = new Queue<Buyer>();
 
         public bool IsOpen => IsUnlocked && (HasCashier || ManualOverride);
         public bool ManualOverride; // true while the player is physically running the till
@@ -42,8 +42,12 @@ namespace MiniMart.Economy
         {
             if (Line.Count == 0 || !IsOpen) return 0f;
             var buyer = Line.Dequeue();
-            float total = economy.QuoteBasket(buyer.Basket);
-            economy.Deposit(total);
+
+            // Charge for what the buyer actually took off the shelves. Basket is the
+            // REMAINING wish-list (it empties as they shop), so quoting it charged
+            // buyers for exactly the items they failed to find.
+            float total = buyer.Collected.Count > 0 ? economy.QuoteBasket(buyer.Collected) : 0f;
+            if (total > 0f) economy.Deposit(total);
             buyer.OnCheckedOut();
             return total;
         }

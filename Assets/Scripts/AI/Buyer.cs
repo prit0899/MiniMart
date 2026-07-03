@@ -12,7 +12,10 @@ namespace MiniMart.AI
     /// </summary>
     public class Buyer : CharacterBase
     {
-        public Dictionary<ItemType, int> Basket = new Dictionary<ItemType, int>();
+        [System.NonSerialized] public Dictionary<ItemType, int> Basket = new Dictionary<ItemType, int>();
+        /// <summary>What the buyer physically took off shelves — this is what they pay for.
+        /// (Basket is the remaining wish-list and empties as they shop.)</summary>
+        [System.NonSerialized] public Dictionary<ItemType, int> Collected = new Dictionary<ItemType, int>();
         public BagType BagType;
         public bool HasCheckedOut;
 
@@ -23,6 +26,10 @@ namespace MiniMart.AI
 
         private ShopShelf currentTarget;
         private bool headingToCounter;
+
+        /// <summary>Where to walk after checkout before despawning. Set by BuyerSpawner.</summary>
+        [System.NonSerialized] public Transform ExitDoor;
+        private bool leaving;
 
         public void Init(int currentPlayerLevel, List<ShopShelf> shelves, List<Economy.CashCounter> cashCounters)
         {
@@ -36,6 +43,10 @@ namespace MiniMart.AI
 
             GenerateBasket();
             AssignBagType();
+
+            // GDD 8.2: 5+ items means the buyer pushes a trolley (visual).
+            if (BagType == BagType.Trolley)
+                Engine.PrimitiveFactory.Trolley(gameObject);
         }
 
         private void GenerateBasket()
@@ -48,10 +59,13 @@ namespace MiniMart.AI
 
             if (available.Count == 0) return;
 
+            var eco = GameManager.Instance?.Economy;
             int itemCount = Random.Range(1, 8);
             for (int i = 0; i < itemCount; i++)
             {
                 var item = available[Random.Range(0, available.Count)];
+                // GDD 8.3 price elasticity: items marked up over +20% get skipped 35% of the time.
+                if (eco != null && eco.IsOverpriced(item) && Random.value < 0.35f) continue;
                 if (!Basket.ContainsKey(item)) Basket[item] = 0;
                 Basket[item] += 1;
             }
@@ -96,6 +110,12 @@ namespace MiniMart.AI
 
         protected override void OnArrived()
         {
+            if (leaving)
+            {
+                Destroy(gameObject);
+                return;
+            }
+
             if (headingToCounter)
             {
                 var counter = FindOpenCounter();
@@ -106,10 +126,14 @@ namespace MiniMart.AI
             if (currentTarget != null && Basket.TryGetValue(currentTarget.Item, out int want))
             {
                 int take = Mathf.Min(want, currentTarget.Count);
-                if (currentTarget.TakeStock(take))
+                if (take > 0 && currentTarget.TakeStock(take))
                 {
                     Basket[currentTarget.Item] -= take;
                     if (Basket[currentTarget.Item] <= 0) Basket.Remove(currentTarget.Item);
+
+                    if (!Collected.ContainsKey(currentTarget.Item)) Collected[currentTarget.Item] = 0;
+                    Collected[currentTarget.Item] += take;
+                    TryPickUp(take); // drives the carry-stack visual
                 }
                 currentTarget = null;
             }
@@ -138,6 +162,14 @@ namespace MiniMart.AI
             return best;
         }
 
-        public void OnCheckedOut() => HasCheckedOut = true;
+        public void OnCheckedOut()
+        {
+            // Checked-out buyers used to freeze at the counter forever, clogging the store
+            // until the concurrency cap silently stopped all future spawns. Walk out instead.
+            HasCheckedOut = true;
+            leaving = true;
+            if (ExitDoor != null) SetTarget(ExitDoor.position);
+            else Destroy(gameObject, 1.5f);
+        }
     }
 }

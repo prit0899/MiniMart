@@ -21,7 +21,7 @@ namespace MiniMart.AI
 
         public List<ShopShelf> TargetShelves;
         public Transform ExitWaypoint;
-        public StoreInventory Inventory;
+        [System.NonSerialized] public StoreInventory Inventory;
 
         private int stolenItemCount;
         private ShopShelf currentTarget;
@@ -118,11 +118,17 @@ namespace MiniMart.AI
         public Transform SpawnPoint;
         public Transform ExitWaypoint;
         public List<ShopShelf> AllShelves;
-        public StoreInventory Inventory;
+        [System.NonSerialized] public StoreInventory Inventory;
+
+        /// <summary>GDD 9.2: theft events only begin once the player reaches this level.</summary>
+        public int MinPlayerLevel = 3;
 
         private float timer;
         private float nextTheftTime;
         private bool activeTheft;
+        private int currentPlayerLevel = 1;
+
+        public void SetPlayerLevel(int level) => currentPlayerLevel = level;
 
         private void Awake() => ScheduleNext();
 
@@ -136,7 +142,7 @@ namespace MiniMart.AI
 
         private void Update()
         {
-            if (activeTheft) return;
+            if (activeTheft || currentPlayerLevel < MinPlayerLevel) return;
             timer += Time.deltaTime;
             if (timer < nextTheftTime) return;
             SpawnThief();
@@ -145,11 +151,26 @@ namespace MiniMart.AI
 
         private void SpawnThief()
         {
-            if (ThiefPrefab == null) return;
+            // ThiefPrefab was never assigned in the scene, so the old null-check here meant
+            // thieves NEVER spawned. Fall back to a runtime-built character like buyers do.
+            if (SpawnPoint == null) return;
             activeTheft = true;
-            var go = Instantiate(ThiefPrefab, SpawnPoint.position, Quaternion.identity);
+            GameObject go;
+            if (ThiefPrefab != null)
+            {
+                go = Instantiate(ThiefPrefab, SpawnPoint.position, Quaternion.identity);
+            }
+            else
+            {
+                go = new GameObject("Thief");
+                go.transform.position = SpawnPoint.position;
+                go.AddComponent<Thief>();
+                go.AddComponent<Engine.WobbleAnimator>();
+                // Dark hooded look so the player can spot the shoplifter in the crowd.
+                Engine.PrimitiveFactory.BuildCharacter(go, new Color(0.22f, 0.22f, 0.28f));
+            }
             var thief = go.GetComponent<Thief>();
-            if (thief == null) return;
+            if (thief == null) { activeTheft = false; return; }
             thief.TargetShelves = AllShelves;
             thief.ExitWaypoint = ExitWaypoint;
             thief.Inventory = Inventory;

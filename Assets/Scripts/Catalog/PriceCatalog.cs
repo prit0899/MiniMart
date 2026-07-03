@@ -28,7 +28,7 @@ namespace MiniMart.Catalog
             { ItemType.TomatoKetchup, 2 },
             { ItemType.Wheat, 2 },
             { ItemType.WheatFlour, 3 },
-            { ItemType.Bread, 3 },
+            { ItemType.Bread, 4 }, // GDD 7: bread (oven) is the level-4 unlock
         };
 
         public const int CashCounter1UnlockLevel = 1; // available by default (manned from lvl 2, see EconomyCatalog)
@@ -40,11 +40,16 @@ namespace MiniMart.Catalog
         public const float PhoneOrderMin = 45f;
         public const float PhoneOrderMax = 300f;
         public const float PhoneOrderWindowMinutes = 10f;     // call stays open for up to 10 minutes
-        public const float PhoneOrderMinIntervalMin = 4f;     // new calls every 4-5 minutes
-        public const float PhoneOrderMaxIntervalMin = 5f;
 
-        public const float TheftMinIntervalMin = 4f;
-        public const float TheftMaxIntervalMin = 5f;
+        /// <summary>Dev switch: true = events fire every few seconds for quick testing.
+        /// MUST be false for real builds — spec is one call/thief per 4-5 minutes.</summary>
+        public static bool FastEventTimers = false;
+
+        public static float PhoneOrderMinIntervalMin => FastEventTimers ? 0.2f : 4f;
+        public static float PhoneOrderMaxIntervalMin => FastEventTimers ? 0.3f : 5f;
+
+        public static float TheftMinIntervalMin => FastEventTimers ? 0.3f : 4f;
+        public static float TheftMaxIntervalMin => FastEventTimers ? 0.5f : 5f;
 
         /// <summary>Clamps any computed bundle/basket total up to the $1 floor.</summary>
         public static float ApplyBundleFloor(float rawTotal) => rawTotal < MinBundlePrice ? MinBundlePrice : rawTotal;

@@ -5,17 +5,66 @@ using MiniMart.Core;
 
 namespace MiniMart.Save
 {
-    /// <summary>Serializable snapshot of everything that must survive a session restart.</summary>
+    /// <summary>Serializable snapshot of everything that must survive a session restart.
+    /// The dictionaries are runtime-friendly APIs; they are flattened into parallel lists on
+    /// serialize (via ISerializationCallbackReceiver) because JsonUtility cannot serialize
+    /// Dictionary directly.</summary>
     [Serializable]
-    public class GameSaveData
+    public class GameSaveData : ISerializationCallbackReceiver
     {
         public int PlayerLevel;
         public float PlayerCash;
-        public Dictionary<string, int> Inventory = new Dictionary<string, int>(); // ItemType.ToString() -> count
-        public Dictionary<string, int> UpgradeLevels = new Dictionary<string, int>(); // "Machine_Blender" etc.
-        public Dictionary<string, float> ManualPrices = new Dictionary<string, float>();
+
+        [NonSerialized] public Dictionary<string, int> Inventory = new Dictionary<string, int>();     // ItemType.ToString() -> count
+        [NonSerialized] public Dictionary<string, int> UpgradeLevels = new Dictionary<string, int>(); // "Machine_Blender" etc.
+        [NonSerialized] public Dictionary<string, float> ManualPrices = new Dictionary<string, float>();
+
         public float TotalPlaySeconds;
         public string SaveTimestamp;
+
+        // ── Serialized backing storage (JsonUtility-compatible) ──
+        [SerializeField] private List<string> _invKeys = new List<string>();
+        [SerializeField] private List<int>    _invValues = new List<int>();
+        [SerializeField] private List<string> _upgKeys = new List<string>();
+        [SerializeField] private List<int>    _upgValues = new List<int>();
+        [SerializeField] private List<string> _priceKeys = new List<string>();
+        [SerializeField] private List<float>  _priceValues = new List<float>();
+
+        public void OnBeforeSerialize()
+        {
+            Flatten(Inventory, _invKeys, _invValues);
+            Flatten(UpgradeLevels, _upgKeys, _upgValues);
+            Flatten(ManualPrices, _priceKeys, _priceValues);
+        }
+
+        public void OnAfterDeserialize()
+        {
+            Inventory = Rebuild(_invKeys, _invValues);
+            UpgradeLevels = Rebuild(_upgKeys, _upgValues);
+            ManualPrices = Rebuild(_priceKeys, _priceValues);
+        }
+
+        private static void Flatten<T>(Dictionary<string, T> source, List<string> keys, List<T> values)
+        {
+            keys.Clear();
+            values.Clear();
+            if (source == null) return;
+            foreach (var kv in source)
+            {
+                keys.Add(kv.Key);
+                values.Add(kv.Value);
+            }
+        }
+
+        private static Dictionary<string, T> Rebuild<T>(List<string> keys, List<T> values)
+        {
+            var dict = new Dictionary<string, T>();
+            if (keys == null || values == null) return dict;
+            int count = Math.Min(keys.Count, values.Count);
+            for (int i = 0; i < count; i++)
+                dict[keys[i]] = values[i];
+            return dict;
+        }
     }
 
     /// <summary>

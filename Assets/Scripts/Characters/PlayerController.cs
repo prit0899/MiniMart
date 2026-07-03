@@ -20,6 +20,9 @@ namespace MiniMart.Characters
         {
             Role = RoleType.Player;
             Curve = RoleCatalog.PlayerCurve();
+            // GDD 3.1: player is 6.0 u/s at level 1 (4.6 x 1.30 curve multiplier).
+            // The CharacterBase default of 2.0 made the player crawl at 2.6 u/s.
+            baseSpeed = 4.6f;
             base.Awake();
         }
 

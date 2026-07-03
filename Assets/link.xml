@@ -1,0 +1,7 @@
+<!-- Prevents IL2CPP managed code stripping from removing collider classes.
+     GameObject.CreatePrimitive resolves BoxCollider/CapsuleCollider/SphereCollider/MeshCollider
+     at RUNTIME, so the linker can't see them being used and strips them on iOS/Android,
+     which makes every CreatePrimitive call fail ("class 'CapsuleCollider' doesn't exist"). -->
+<linker>
+  <assembly fullname="UnityEngine.PhysicsModule" preserve="all" />
+</linker>

@@ -38,10 +38,7 @@ namespace MiniMart.UI
                     
                     var mr = icons[i].GetComponent<MeshRenderer>();
                     if (mr != null)
-                    {
-                        mr.material = new Material(Shader.Find("Standard"));
-                        mr.material.color = Color.white;
-                    }
+                        mr.material = Engine.PrimitiveFactory.NewColoredMaterial(Color.white);
                 }
                 icons[i].SetActive(false);
             }

@@ -18,8 +18,18 @@ namespace MiniMart.Map
 
         private bool[,] walkable;
 
+        public static GridPathfinder Instance { get; private set; }
+
         private void Awake()
         {
+            Instance = this;
+        }
+
+        public void Initialize(int width, int height, float cellSize)
+        {
+            GridWidth = width;
+            GridHeight = height;
+            CellSize = cellSize;
             walkable = new bool[GridWidth, GridHeight];
             for (int x = 0; x < GridWidth; x++)
                 for (int y = 0; y < GridHeight; y++)

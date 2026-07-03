@@ -35,7 +35,11 @@ namespace MiniMart.Characters
         public override void Tick(float dt)
         {
             base.Tick(dt);
-            if (hasTarget || AssignedShelves == null || AssignedShelves.Length == 0) return;
+
+            if (inventory == null && GameManager.Instance != null)
+                inventory = GameManager.Instance.Inventory;
+
+            if (hasTarget || AssignedShelves == null || AssignedShelves.Length == 0 || inventory == null) return;
 
             ShopShelf needsRestock = null;
             int worstDeficit = -1;
@@ -84,12 +88,46 @@ namespace MiniMart.Characters
         }
     }
 
-    /// <summary>A physical shelf slot in the shop floor that buyers pull stock from.</summary>
+    /// <summary>A physical shelf slot in the shop floor that buyers pull stock from.
+    /// Shows a floating "n/cap" badge like the reference game so stock changes are visible.</summary>
     public class ShopShelf : MonoBehaviour
     {
         public ItemType Item;
         public int Capacity = 10;
         public int Count;
+
+        private TextMesh badge;
+        private int lastShown = -1;
+
+        private void Start()
+        {
+            var go = new GameObject("StockBadge");
+            go.transform.SetParent(transform, false);
+            go.transform.localPosition = new Vector3(0, 2.4f, 0);
+            badge = go.AddComponent<TextMesh>();
+            badge.fontSize = 42;
+            badge.characterSize = 0.08f;
+            badge.anchor = TextAnchor.MiddleCenter;
+            badge.alignment = TextAlignment.Center;
+            badge.color = Color.white;
+            var font = Engine.HUDBuilder.UIFont;
+            if (font != null)
+            {
+                badge.font = font;
+                var mr = go.GetComponent<MeshRenderer>();
+                if (mr != null) mr.material = font.material;
+            }
+            go.AddComponent<Billboard>();
+        }
+
+        private void Update()
+        {
+            if (badge != null && Count != lastShown)
+            {
+                lastShown = Count;
+                badge.text = $"{Count}/{Capacity}";
+            }
+        }
 
         public void AddStock(int amount) => Count = Mathf.Min(Capacity, Count + amount);
         public bool TakeStock(int amount)

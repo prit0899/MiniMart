@@ -1,6 +1,7 @@
 using UnityEngine;
 using MiniMart.Core;
 using MiniMart.Catalog;
+using MiniMart.Map;
 
 namespace MiniMart.Characters
 {
@@ -27,6 +28,9 @@ namespace MiniMart.Characters
 
         public float CurrentSpeed => baseSpeed * speedMultiplier;
 
+        /// <summary>True while a SetTarget path is still being walked.</summary>
+        public bool HasMoveTarget => hasTarget;
+
         protected virtual void Awake()
         {
             ApplyLevel(Level);
@@ -50,28 +54,91 @@ namespace MiniMart.Characters
             return true;
         }
 
+        protected System.Collections.Generic.List<Vector3> pathWaypoints = new System.Collections.Generic.List<Vector3>();
+        protected int currentWaypointIndex = 0;
+
         public void SetTarget(Vector3 worldPos)
         {
             // Lock Y to 0 for flat ground movement
             target = new Vector3(worldPos.x, 0, worldPos.z);
             hasTarget = true;
             State = CharacterState.Walking;
+
+            if (GridPathfinder.Instance != null)
+            {
+                pathWaypoints = GridPathfinder.Instance.FindPath(transform.position, target);
+                currentWaypointIndex = 0;
+                // If path is empty, just add target directly
+                if (pathWaypoints == null || pathWaypoints.Count == 0)
+                {
+                    pathWaypoints = new System.Collections.Generic.List<Vector3> { target };
+                }
+            }
+            else
+            {
+                pathWaypoints = new System.Collections.Generic.List<Vector3> { target };
+                currentWaypointIndex = 0;
+            }
         }
 
-        /// <summary>Called every simulation tick (not every frame) by GameManager.</summary>
+        protected virtual void Start()
+        {
+            if (GameManager.Instance != null)
+                GameManager.Instance.RegisterCharacter(this);
+
+            var anim = GetComponentInChildren<Animator>();
+            if (anim != null) anim.applyRootMotion = false;
+        }
+
+        protected virtual void OnDestroy()
+        {
+            if (GameManager.Instance != null)
+                GameManager.Instance.UnregisterCharacter(this);
+        }
+
+        /// <summary>Called every simulation tick (not every frame) by GameManager.
+        /// Handles decision-making and logic updates.</summary>
         public virtual void Tick(float dt)
         {
-            if (hasTarget) MoveTowardsTarget(dt);
+            // Decision making logic can go here in subclasses
+        }
+
+        protected virtual void Update()
+        {
+            if (hasTarget) MoveTowardsTarget(Time.deltaTime);
         }
 
         protected virtual void MoveTowardsTarget(float dt)
         {
+            if (pathWaypoints == null || pathWaypoints.Count == 0 || currentWaypointIndex >= pathWaypoints.Count)
+            {
+                hasTarget = false;
+                State = CharacterState.Idle;
+                OnArrived();
+                return;
+            }
+
+            Vector3 nextTarget = pathWaypoints[currentWaypointIndex];
+            nextTarget.y = 0;
+
             Vector3 pos = transform.position;
-            Vector3 next = Vector3.MoveTowards(pos, target, CurrentSpeed * dt);
+            pos.y = 0;
+            Vector3 next = Vector3.MoveTowards(pos, nextTarget, CurrentSpeed * dt);
             
             // Keep grounded
             next.y = 0;
-            transform.position = next;
+            
+            var cc = GetComponent<CharacterController>();
+            if (cc != null)
+            {
+                cc.Move(next - pos);
+            }
+            else
+            {
+                var rb = GetComponent<Rigidbody>();
+                if (rb != null && !rb.isKinematic) rb.MovePosition(next);
+                else transform.position = next;
+            }
             
             // Optional: Rotate character to face movement direction
             if ((next - pos).sqrMagnitude > 0.001f)
@@ -79,11 +146,15 @@ namespace MiniMart.Characters
                 transform.rotation = Quaternion.LookRotation(next - pos, Vector3.up);
             }
             
-            if (Vector3.Distance(next, target) < 0.01f)
+            if (Vector3.Distance(next, nextTarget) < 0.15f)
             {
-                hasTarget = false;
-                State = CharacterState.Idle;
-                OnArrived();
+                currentWaypointIndex++;
+                if (currentWaypointIndex >= pathWaypoints.Count)
+                {
+                    hasTarget = false;
+                    State = CharacterState.Idle;
+                    OnArrived();
+                }
             }
         }
 

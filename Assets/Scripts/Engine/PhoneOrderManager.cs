@@ -35,10 +35,10 @@ namespace MiniMart.Engine
     /// </summary>
     public class PhoneOrderManager : MonoBehaviour
     {
-        public EconomyManager Economy;
-        public StoreInventory Inventory;
+        [System.NonSerialized] public EconomyManager Economy;
+        [System.NonSerialized] public StoreInventory Inventory;
 
-        public List<PhoneOrder> ActiveOrders = new List<PhoneOrder>();
+        [System.NonSerialized] public List<PhoneOrder> ActiveOrders = new List<PhoneOrder>();
 
         private float spawnTimer;
         private float nextSpawnTime;
@@ -80,34 +80,64 @@ namespace MiniMart.Engine
 
         private void SpawnOrder()
         {
+            // GDD 9.1: at most 2 active orders.
+            if (ActiveOrders.Count >= 2) return;
+
             var order = new PhoneOrder
             {
                 Id = $"Order_{++orderCounter}",
                 TimeRemaining = PriceCatalog.PhoneOrderWindowMinutes * 60f
             };
 
-            // Build a random bundle whose total falls within $45-$300.
             var available = new List<ItemType>();
             foreach (ItemType item in System.Enum.GetValues(typeof(ItemType)))
                 if (PriceCatalog.IsUnlocked(item, playerLevel)) available.Add(item);
 
             if (available.Count == 0) return;
 
-            float target = Random.Range(PriceCatalog.PhoneOrderMin, PriceCatalog.PhoneOrderMax);
-            float accumulated = 0f;
-            int safety = 200;
-            while (accumulated < target && safety-- > 0)
+            // GDD 9.1: quantities must be FULFILLABLE — capped by each item's storage capacity.
+            // The $45-$300 payout is a wholesale premium on top of the tiny retail prices,
+            // not a sum of them (a 15-egg storage could never add up to $45 at $0.05/egg).
+            int typeCount = Mathf.Min(available.Count, Random.Range(1, 4)); // 1-3 item types
+            float retailTotal = 0f;
+            for (int t = 0; t < typeCount; t++)
             {
                 var item = available[Random.Range(0, available.Count)];
-                if (!order.Items.ContainsKey(item)) order.Items[item] = 0;
-                order.Items[item]++;
-                accumulated += Economy != null ? Economy.GetUnitPrice(item) : PriceCatalog.BasePrice[item];
+                if (order.Items.ContainsKey(item)) continue;
+
+                int cap = 10;
+                if (Inventory != null && Inventory.Stocks.TryGetValue(item, out var stock))
+                    cap = stock.MaxCapacity;
+
+                int qty = Random.Range(3, Mathf.Max(4, cap + 1)); // 3..cap, always <= storage cap
+                order.Items[item] = qty;
+                float unit = Economy != null ? Economy.GetUnitPrice(item) : PriceCatalog.BasePrice[item];
+                retailTotal += unit * qty;
             }
 
-            order.Value = accumulated;
+            // Premium payout scaled by order size, clamped to the GDD range.
+            order.Value = Mathf.Clamp(45f + retailTotal * 60f, 45f, 300f);
             ActiveOrders.Add(order);
             Debug.Log($"Phone order {order.Id} arrived — value ${order.Value:F2}");
             OnNewOrder?.Invoke(order);
+        }
+
+        /// <summary>Player declined the call — remove it so it stops counting against the
+        /// 2-active-orders limit and never pays out.</summary>
+        public void Dismiss(PhoneOrder order)
+        {
+            if (order == null) return;
+            ActiveOrders.Remove(order);
+            Debug.Log($"Phone order {order.Id} dismissed.");
+        }
+
+        /// <summary>True when current store inventory can cover every line of the order.</summary>
+        public bool CanFulfil(PhoneOrder order)
+        {
+            if (order == null || order.IsExpired || order.IsFulfilled || Inventory == null) return false;
+            foreach (var kv in order.Items)
+                if (Inventory.CountOf(kv.Key) < kv.Value) return false;
+            return true;
         }
 
         /// <summary>Player / UI calls this to attempt fulfilment from current store inventory.</summary>
@@ -121,7 +151,9 @@ namespace MiniMart.Engine
             foreach (var kv in order.Items)
                 Inventory.Withdraw(kv.Key, kv.Value);
 
-            float revenue = order.TotalFulfillmentValue(Economy);
+            // Pay the premium value the player was shown — TotalFulfillmentValue is the retail
+            // sum (cents), which would silently pay ~$1 for a "$75" order.
+            float revenue = order.Value;
             Economy?.Deposit(revenue);
             order.IsFulfilled = true;
             ActiveOrders.Remove(order);

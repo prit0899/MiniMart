@@ -1,6 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
+
 using MiniMart.Core;
 using MiniMart.Runtime;
 
@@ -9,9 +9,9 @@ namespace MiniMart.UI
     public class InventoryRow : MonoBehaviour
     {
         public ItemType Item;
-        public TextMeshProUGUI Label;
+        public Text Label;
         public Slider FillBar;
-        public TextMeshProUGUI CountText;
+        public Text CountText;
 
         public void Refresh(StoreInventory inv)
         {

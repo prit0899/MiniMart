@@ -32,6 +32,23 @@ namespace MiniMart.Economy
 
         public void ClearOffer(ItemType item) => activeOfferPercent.Remove(item);
 
+        /// <summary>Manual price overrides, exposed read-only for the save system.</summary>
+        public IReadOnlyDictionary<ItemType, float> ManualPrices => manualPrices;
+
+        /// <summary>GDD 8.3: an item priced more than +20% over base risks buyer rejection.</summary>
+        public bool IsOverpriced(ItemType item) =>
+            PriceCatalog.BasePrice.TryGetValue(item, out var bp) && GetUnitPrice(item) > bp * 1.2f;
+
+        /// <summary>GDD 8.3: any ≥10% discount (offer or manual price cut) boosts buyer traffic.</summary>
+        public bool AnyDiscountActive()
+        {
+            foreach (var kv in activeOfferPercent)
+                if (kv.Value >= 10f) return true;
+            foreach (var kv in manualPrices)
+                if (PriceCatalog.BasePrice.TryGetValue(kv.Key, out var bp) && kv.Value <= bp * 0.9f) return true;
+            return false;
+        }
+
         /// <summary>Computes a basket total and applies the $1 floor rule before charging.</summary>
         public float QuoteBasket(IDictionary<ItemType, int> basket)
         {

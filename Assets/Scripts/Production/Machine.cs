@@ -42,6 +42,16 @@ namespace MiniMart.Production
             step = curve.GetStep(Level);
         }
 
+        /// <summary>Cost of the next level, or -1 at max. Read-only — safe for UI polling.</summary>
+        public int NextUpgradeCost
+        {
+            get
+            {
+                InitializeIfNeeded();
+                return curve.CostForNextLevel(Level);
+            }
+        }
+
         public bool TryUpgrade(out int cost)
         {
             InitializeIfNeeded();
