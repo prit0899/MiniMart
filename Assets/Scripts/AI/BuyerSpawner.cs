@@ -86,6 +86,7 @@ namespace MiniMart.AI
                 go.transform.position = EntranceDoor.position;
                 go.AddComponent<Buyer>();
                 go.AddComponent<Engine.WobbleAnimator>();
+                go.AddComponent<MiniMart.UI.CarryVisual>();
                 // Same body/head/eyes build as every other character — no more bare capsules.
                 Engine.PrimitiveFactory.BuildCharacter(go, BuyerPalette[Random.Range(0, BuyerPalette.Length)]);
             }

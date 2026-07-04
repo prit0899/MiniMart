@@ -23,8 +23,16 @@ namespace MiniMart.Economy
             return price;
         }
 
-        /// <summary>Player-driven price adjustment (Section 1: "adjust prices").</summary>
-        public void SetManualPrice(ItemType item, float newPrice) => manualPrices[item] = System.Math.Max(0.05f, newPrice);
+        /// <summary>Player-driven price adjustment, clamped to the GDD 6.1 band of ±50%
+        /// around base price (with an absolute $0.05 floor). Previously unclamped — any
+        /// code path could set arbitrary prices and break buyer elasticity.</summary>
+        public void SetManualPrice(ItemType item, float newPrice)
+        {
+            float basePrice = PriceCatalog.BasePrice.TryGetValue(item, out var bp) ? bp : 1f;
+            float min = System.Math.Max(0.05f, basePrice * 0.5f);
+            float max = basePrice * 1.5f;
+            manualPrices[item] = System.Math.Clamp(newPrice, min, max);
+        }
 
         /// <summary>Player-driven promotional offer (Section 1: "create offers").</summary>
         public void CreateOffer(ItemType item, float discountPercent) =>

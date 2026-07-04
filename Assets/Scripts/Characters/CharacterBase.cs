@@ -16,6 +16,7 @@ namespace MiniMart.Characters
         public int Level = 1;
         public int CarryCapacity;
         public int CarryCount;
+        public Color CarryColor = Color.white;
         public CharacterState State = CharacterState.Idle;
 
         [Header("Movement")]

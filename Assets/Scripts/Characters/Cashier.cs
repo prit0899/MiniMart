@@ -23,7 +23,9 @@ namespace MiniMart.Characters
         public void AssignTo(CashCounter counter)
         {
             AssignedCounter = counter;
-            if (counter != null) transform.position = counter.transform.position;
+            // Stand BEHIND the till (buyers queue on the -z side), not inside it.
+            if (counter != null)
+                transform.position = counter.transform.position + new Vector3(0, 0, 0.95f);
         }
 
         public override void Tick(float dt)

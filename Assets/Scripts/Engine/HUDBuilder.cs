@@ -188,6 +188,36 @@ namespace MiniMart.Engine
             // ── Pause button (Settings acts as pause toggle too) ──────────
             var pauseBtn = settingsBtn; // Re-use settings as pause toggle
 
+            // ── Welcome-back / offline earnings panel (center, hidden by default) ──
+            var offlinePanel = NewPanel("OfflinePanel", root, GreenShell);
+            SetAnchored(offlinePanel.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(0, 0), new Vector2(520, 400));
+            var offlineTitle = NewText("OfflineTitle", offlinePanel.transform, "WELCOME BACK!", 34, TextAnchor.MiddleCenter);
+            offlineTitle.fontStyle = FontStyle.Bold;
+            SetAnchored(offlineTitle.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0.5f, 1),
+                new Vector2(0, -20), new Vector2(460, 50));
+            var offlineText = NewText("OfflineText", offlinePanel.transform, "", 24, TextAnchor.UpperCenter);
+            SetAnchored(offlineText.rectTransform, new Vector2(0, 0.25f), new Vector2(1, 1), new Vector2(0.5f, 1),
+                new Vector2(0, -80), new Vector2(-40, 0));
+            var collectOfflineBtn = NewButton("CollectOfflineButton", offlinePanel.transform, "COLLECT", GreenColor, out _);
+            SetAnchored(collectOfflineBtn.GetComponent<RectTransform>(), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0.5f, 0),
+                new Vector2(0, 20), new Vector2(240, 64));
+
+            // ── Store level-up popup (center, hidden by default) ──
+            var levelUpPanel = NewPanel("LevelUpPanel", root, GreenShell);
+            SetAnchored(levelUpPanel.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(0, 0), new Vector2(520, 340));
+            var levelUpTitle = NewText("LevelUpTitle", levelUpPanel.transform, "LEVEL UP!", 40, TextAnchor.MiddleCenter);
+            levelUpTitle.fontStyle = FontStyle.Bold;
+            SetAnchored(levelUpTitle.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0.5f, 1),
+                new Vector2(0, -22), new Vector2(460, 56));
+            var levelUpText = NewText("LevelUpText", levelUpPanel.transform, "", 24, TextAnchor.UpperCenter);
+            SetAnchored(levelUpText.rectTransform, new Vector2(0, 0.28f), new Vector2(1, 1), new Vector2(0.5f, 1),
+                new Vector2(0, -90), new Vector2(-40, 0));
+            var levelUpOkBtn = NewButton("LevelUpOkButton", levelUpPanel.transform, "AWESOME!", GreenColor, out _);
+            SetAnchored(levelUpOkBtn.GetComponent<RectTransform>(), new Vector2(0.5f, 0), new Vector2(0.5f, 0), new Vector2(0.5f, 0),
+                new Vector2(0, 18), new Vector2(240, 60));
+
             // ── HUDController ─────────────────────────────────────────────
             var hudGO = new GameObject("HUDController");
             hudGO.SetActive(false);
@@ -210,6 +240,12 @@ namespace MiniMart.Engine
             hud.FulfilOrderButton = fulfilBtn;
             hud.DismissOrderButton = dismissBtn;
             hud.InventoryLabel = invText;
+            hud.OfflinePanel = offlinePanel.gameObject;
+            hud.OfflineLabel = offlineText;
+            hud.CollectOfflineButton = collectOfflineBtn;
+            hud.LevelUpPanel = levelUpPanel.gameObject;
+            hud.LevelUpLabel = levelUpText;
+            hud.LevelUpOkButton = levelUpOkBtn;
             hudGO.SetActive(true); // triggers Awake with all refs populated
 
             // ── On-device error readout (bottom-center, hidden until an error fires) ──

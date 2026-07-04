@@ -14,8 +14,10 @@ namespace MiniMart.UI
         public float IconSpacing = 0.25f;
 
         private CharacterBase character;
-        private GameObject[] icons = new GameObject[10];
+        private GameObject[] icons = new GameObject[24]; // player carry reaches 44; visual clamps here
         private int lastCount = -1;
+        private Color lastColor = Color.clear;
+        private TextMesh maxBadge; // reference-style "MAX" over a full stack
 
         private void Awake()
         {
@@ -42,14 +44,35 @@ namespace MiniMart.UI
                 }
                 icons[i].SetActive(false);
             }
+
+            // "MAX" badge shown when the carry stack is full (reference UI).
+            var badgeGO = new GameObject("MaxBadge");
+            badgeGO.transform.SetParent(transform, false);
+            maxBadge = badgeGO.AddComponent<TextMesh>();
+            maxBadge.text = "MAX";
+            maxBadge.fontSize = 44;
+            maxBadge.characterSize = 0.08f;
+            maxBadge.anchor = TextAnchor.MiddleCenter;
+            maxBadge.alignment = TextAlignment.Center;
+            maxBadge.color = new Color(1f, 0.35f, 0.25f);
+            var font = Engine.HUDBuilder.UIFont;
+            if (font != null)
+            {
+                maxBadge.font = font;
+                var bmr = badgeGO.GetComponent<MeshRenderer>();
+                if (bmr != null) bmr.material = font.material;
+            }
+            badgeGO.AddComponent<MiniMart.Billboard>();
+            badgeGO.SetActive(false);
         }
 
         private void LateUpdate()
         {
             if (character == null) return;
             int count = Mathf.Min(character.CarryCount, icons.Length);
-            if (count == lastCount) return;
+            if (count == lastCount && character.CarryColor == lastColor) return;
             lastCount = count;
+            lastColor = character.CarryColor;
 
             for (int i = 0; i < icons.Length; i++)
             {
@@ -57,7 +80,20 @@ namespace MiniMart.UI
                 bool show = i < count;
                 icons[i].SetActive(show);
                 if (show)
+                {
                     icons[i].transform.localPosition = StackOffset + Vector3.up * (i * IconSpacing);
+                    var mr = icons[i].GetComponent<MeshRenderer>();
+                    if (mr != null)
+                        mr.material.color = character.CarryColor;
+                }
+            }
+
+            if (maxBadge != null)
+            {
+                bool full = character.CarryCapacity > 0 && character.CarryCount >= character.CarryCapacity;
+                maxBadge.gameObject.SetActive(full);
+                if (full)
+                    maxBadge.transform.localPosition = StackOffset + Vector3.up * (count * IconSpacing + 0.5f);
             }
         }
     }

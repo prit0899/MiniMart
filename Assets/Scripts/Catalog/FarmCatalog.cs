@@ -14,6 +14,8 @@ namespace MiniMart.Catalog
             { ItemType.Tomato, 15 },
             { ItemType.TomatoKetchup, 15 },
             { ItemType.Egg, 15 },
+            { ItemType.Milk, 15 },
+            { ItemType.Cheese, 12 },
         };
 
         public const int DustbinCount = 2;
@@ -38,6 +40,11 @@ namespace MiniMart.Catalog
         public const int HenCount = 2;
         public const int EggMaxPerHen = TomatoMaxPerPlant; // mirrors tomato-style cycle
         public const float EggGrowSecondsPerUnit = TomatoGrowSecondsPerUnit;
+
+        // Cow pen: one cow behaving like a hen (same slot-growth shape, slower cadence).
+        public const int CowCount = 1;
+        public const int MilkMaxPerCow = 3;
+        public const float MilkGrowSecondsPerUnit = 2.0f;
 
         // Wheat
         public const int WheatCols = 3;

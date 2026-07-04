@@ -59,6 +59,7 @@ namespace MiniMart.Characters
         {
             if (TryPickUp(amount))
             {
+                CarryColor = Engine.PrimitiveFactory.ItemColor(item);
                 if (item == ItemType.Tomato) tomatoCount += amount;
                 else if (item == ItemType.Wheat) wheatCount += amount;
                 else if (item == ItemType.Egg) eggCount += amount;
@@ -115,6 +116,21 @@ namespace MiniMart.Characters
             State = CharacterState.Loading;
         }
 
+        private Vector3 RackPos(ItemType item) =>
+            Engine.StorageRack.PositionOf(item, new Vector3(5f, 0f, 10f));
+
+        /// <summary>Rack of the primary output we're carrying (racks sit by their sources).</summary>
+        private Vector3 DepositPos()
+        {
+            if (ketchupCount > 0) return RackPos(ItemType.TomatoKetchup);
+            if (breadCount > 0) return RackPos(ItemType.Bread);
+            if (flourCount > 0) return RackPos(ItemType.WheatFlour);
+            if (wheatCount > 0) return RackPos(ItemType.Wheat);
+            if (tomatoCount > 0) return RackPos(ItemType.Tomato);
+            if (eggCount > 0) return RackPos(ItemType.Egg);
+            return RackPos(ItemType.Tomato);
+        }
+
         public override void Tick(float dt)
         {
             base.Tick(dt);
@@ -156,7 +172,7 @@ namespace MiniMart.Characters
                     if (CarryCount > 0 && (ketchupCount > 0 || breadCount > 0 || flourCount > 0))
                     {
                         cState = ChefState.GoingToDeposit;
-                        SetTarget(new Vector3(5f, 0f, 10f));
+                        SetTarget(DepositPos());
                         return;
                     }
 
@@ -167,21 +183,21 @@ namespace MiniMart.Characters
                         if (oven != null && oven.InputQueued < oven.StackCapacity && inventory.CountOf(ItemType.WheatFlour) >= 1 && inventory.CountOf(ItemType.Egg) >= 1)
                         {
                             cState = ChefState.GoingToWithdrawOvenIngredients;
-                            SetTarget(new Vector3(5f, 0f, 10f));
+                            SetTarget(RackPos(ItemType.WheatFlour));
                             return;
                         }
                         // Check Mill (Flour): Needs 1 Wheat
                         else if (mill != null && mill.InputQueued < mill.StackCapacity && inventory.CountOf(ItemType.Wheat) >= 1)
                         {
                             cState = ChefState.GoingToWithdrawWheat;
-                            SetTarget(new Vector3(5f, 0f, 10f));
+                            SetTarget(RackPos(ItemType.Wheat));
                             return;
                         }
                         // Check Blender (Ketchup): Needs 1 Tomato
                         else if (blender != null && blender.InputQueued < blender.StackCapacity && inventory.CountOf(ItemType.Tomato) >= 1)
                         {
                             cState = ChefState.GoingToWithdrawTomato;
-                            SetTarget(new Vector3(5f, 0f, 10f));
+                            SetTarget(RackPos(ItemType.Tomato));
                             return;
                         }
                         // Spec: chef fetches from the FARM by himself when storage has none.
@@ -220,7 +236,7 @@ namespace MiniMart.Characters
                     else if (CarryCount > 0)
                     {
                         cState = ChefState.GoingToDeposit;
-                        SetTarget(new Vector3(5f, 0f, 10f));
+                        SetTarget(DepositPos());
                     }
                     break;
 

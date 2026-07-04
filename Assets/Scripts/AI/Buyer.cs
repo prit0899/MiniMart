@@ -12,10 +12,21 @@ namespace MiniMart.AI
     /// </summary>
     public class Buyer : CharacterBase
     {
+        /// <summary>Light personality system (from the Farm-Market spec): shapes walk
+        /// speed, basket size, and how long they'll tolerate a checkout queue.</summary>
+        public enum Personality { Normal, Impatient, Rich, Bargain }
+        public Personality Kind;
+
         [System.NonSerialized] public Dictionary<ItemType, int> Basket = new Dictionary<ItemType, int>();
         /// <summary>What the buyer physically took off shelves — this is what they pay for.
         /// (Basket is the remaining wish-list and empties as they shop.)</summary>
         [System.NonSerialized] public Dictionary<ItemType, int> Collected = new Dictionary<ItemType, int>();
+
+        /// <summary>Snapshot of the wish-list at spawn, for thought-bubble "have/want" display.</summary>
+        [System.NonSerialized] public Dictionary<ItemType, int> OriginalWant = new Dictionary<ItemType, int>();
+
+        /// <summary>True while standing in a checkout line (thought bubble shows "$").</summary>
+        public bool InQueue => queuedCounter != null;
         public BagType BagType;
         public bool HasCheckedOut;
 
@@ -31,6 +42,14 @@ namespace MiniMart.AI
         [System.NonSerialized] public Transform ExitDoor;
         private bool leaving;
 
+        private float queuePatienceSeconds;
+        private float queueWait;
+        private bool shownSoldOut;
+        private Economy.CashCounter queuedCounter;
+        private ShopShelf pickingShelf;
+        private float pickBeat;
+        private bool waitingForCounter; // arrived at the tills but none is open yet
+
         public void Init(int currentPlayerLevel, List<ShopShelf> shelves, List<Economy.CashCounter> cashCounters)
         {
             Role = RoleType.Buyer;
@@ -41,12 +60,32 @@ namespace MiniMart.AI
             CarryCapacity = 20; // generous; BagType is visual only
             CarryCount = 0;
 
+            // Roll a personality: mostly normal, with flavourful outliers.
+            float roll = Random.value;
+            Kind = roll < 0.55f ? Personality.Normal
+                 : roll < 0.75f ? Personality.Impatient
+                 : roll < 0.90f ? Personality.Bargain
+                 : Personality.Rich;
+            switch (Kind)
+            {
+                case Personality.Impatient: speedMultiplier = 1.35f; queuePatienceSeconds = 12f; break;
+                case Personality.Rich:      speedMultiplier = 1.00f; queuePatienceSeconds = 35f; break;
+                case Personality.Bargain:   speedMultiplier = 0.90f; queuePatienceSeconds = 45f; break;
+                default:                    speedMultiplier = 1.10f; queuePatienceSeconds = 25f; break;
+            }
+
             GenerateBasket();
+            OriginalWant.Clear();
+            foreach (var kv in Basket) OriginalWant[kv.Key] = kv.Value;
             AssignBagType();
 
             // GDD 8.2: 5+ items means the buyer pushes a trolley (visual).
             if (BagType == BagType.Trolley)
                 Engine.PrimitiveFactory.Trolley(gameObject);
+
+            // Reference-style thought bubble (wish icon + progress fraction).
+            if (GetComponent<Engine.ThoughtBubble>() == null)
+                gameObject.AddComponent<Engine.ThoughtBubble>();
         }
 
         private void GenerateBasket()
@@ -55,12 +94,17 @@ namespace MiniMart.AI
             // Randomly request 1-7 items, only from unlocked item types.
             var available = new List<ItemType>();
             foreach (ItemType item in System.Enum.GetValues(typeof(ItemType)))
-                if (PriceCatalog.IsUnlocked(item, playerLevel)) available.Add(item);
+                if (PriceCatalog.IsUnlocked(item, playerLevel) && HasActiveShelf(item)) available.Add(item);
 
             if (available.Count == 0) return;
 
             var eco = GameManager.Instance?.Economy;
-            int itemCount = Random.Range(1, 8);
+            int itemCount = Kind switch
+            {
+                Personality.Rich    => Random.Range(4, 10), // big baskets, trolley likely
+                Personality.Bargain => Random.Range(1, 4),  // small careful baskets
+                _                   => Random.Range(1, 8),
+            };
             for (int i = 0; i < itemCount; i++)
             {
                 var item = available[Random.Range(0, available.Count)];
@@ -69,6 +113,16 @@ namespace MiniMart.AI
                 if (!Basket.ContainsKey(item)) Basket[item] = 0;
                 Basket[item] += 1;
             }
+        }
+
+        /// <summary>Wishlist sanity (reference behaviour): buyers only want items whose
+        /// shelf has actually been purchased/placed in the store.</summary>
+        private bool HasActiveShelf(ItemType item)
+        {
+            if (allShelves == null) return false;
+            foreach (var s in allShelves)
+                if (s != null && s.gameObject.activeInHierarchy && s.Item == item) return true;
+            return false;
         }
 
         private void AssignBagType()
@@ -82,6 +136,79 @@ namespace MiniMart.AI
         {
             base.Tick(dt);
             if (HasCheckedOut || hasTarget) return;
+
+            // Standing in a checkout line: keep our queue slot, patience runs down,
+            // impatient shoppers walk out.
+            if (queuedCounter != null)
+            {
+                queueWait += dt;
+                if (queueWait >= queuePatienceSeconds)
+                {
+                    queuedCounter.RemoveFromLine(this);
+                    queuedCounter = null;
+                    LeaveWithoutPaying("ran out of patience in the queue");
+                    return;
+                }
+
+                // Shuffle forward to our slot as the line advances (no more one-point pileups).
+                int idx = queuedCounter.Line.IndexOf(this);
+                if (idx >= 0)
+                {
+                    Vector3 slot = queuedCounter.GetQueueSlot(idx);
+                    Vector3 flat = transform.position; flat.y = 0; slot.y = 0;
+                    if ((flat - slot).sqrMagnitude > 0.3f) SetTarget(slot);
+                }
+                return;
+            }
+
+            // Arrived at the tills while none was open (e.g. level 1, player elsewhere):
+            // wait around with queue patience; join the moment a counter opens.
+            // Previously these buyers froze here FOREVER, silently filling the 12-buyer
+            // cap and stopping all future spawns.
+            if (waitingForCounter)
+            {
+                queueWait += dt;
+                var open = FindUnlockedCounter();
+                if (open != null)
+                {
+                    waitingForCounter = false;
+                    open.Enqueue(this);
+                    queuedCounter = open;
+                    queueWait = 0f;
+                }
+                else if (queueWait >= queuePatienceSeconds)
+                {
+                    waitingForCounter = false;
+                    LeaveWithoutPaying("gave up waiting for an open counter");
+                }
+                return;
+            }
+
+            // Standing at a shelf, taking items one per beat.
+            if (pickingShelf != null)
+            {
+                pickBeat += dt;
+                if (pickBeat < 0.25f) return;
+                pickBeat = 0f;
+
+                var it = pickingShelf.Item;
+                if (pickingShelf.gameObject.activeInHierarchy &&
+                    Basket.TryGetValue(it, out int want) && want > 0 &&
+                    pickingShelf.Count > 0 && pickingShelf.TakeStock(1))
+                {
+                    Basket[it] = want - 1;
+                    if (Basket[it] <= 0) Basket.Remove(it);
+                    if (!Collected.ContainsKey(it)) Collected[it] = 0;
+                    Collected[it] += 1;
+                    TryPickUp(1);
+                    CarryColor = Engine.PrimitiveFactory.ItemColor(it);
+                }
+                else
+                {
+                    pickingShelf = null; // line done or shelf ran dry — move on
+                }
+                return;
+            }
 
             if (!headingToCounter)
             {
@@ -98,8 +225,15 @@ namespace MiniMart.AI
                     }
                 }
 
-                // Nothing left to pick — head to nearest open counter.
-                var counter = FindOpenCounter();
+                // Nothing left to pick — if wishes remain unfulfilled, show "sold out" confusion.
+                if (Basket.Count > 0 && !shownSoldOut)
+                {
+                    shownSoldOut = true;
+                    Engine.Emote.SoldOut(transform.position);
+                }
+
+                // Head to nearest open counter.
+                var counter = FindUnlockedCounter();
                 if (counter != null)
                 {
                     headingToCounter = true;
@@ -118,23 +252,34 @@ namespace MiniMart.AI
 
             if (headingToCounter)
             {
-                var counter = FindOpenCounter();
-                counter?.Enqueue(this);
+                var counter = FindUnlockedCounter();
+                if (counter != null)
+                {
+                    counter.Enqueue(this);
+                    queuedCounter = counter;
+                    
+                    int idx = counter.Line.IndexOf(this);
+                    if (idx >= 0)
+                    {
+                        Vector3 slot = counter.GetQueueSlot(idx);
+                        SetTarget(slot);
+                    }
+                }
+                else
+                {
+                    waitingForCounter = true; // handled (with patience) in Tick
+                }
+                queueWait = 0f;
                 return;
             }
 
-            if (currentTarget != null && Basket.TryGetValue(currentTarget.Item, out int want))
+            if (currentTarget != null)
             {
-                int take = Mathf.Min(want, currentTarget.Count);
-                if (take > 0 && currentTarget.TakeStock(take))
-                {
-                    Basket[currentTarget.Item] -= take;
-                    if (Basket[currentTarget.Item] <= 0) Basket.Remove(currentTarget.Item);
-
-                    if (!Collected.ContainsKey(currentTarget.Item)) Collected[currentTarget.Item] = 0;
-                    Collected[currentTarget.Item] += take;
-                    TryPickUp(take); // drives the carry-stack visual
-                }
+                // Reference behaviour: items are taken ONE AT A TIME on a beat, so the
+                // thought bubble visibly ticks 1/4 -> 2/4 -> ... (bulk-grab made the
+                // requirement over their head look like it never updated).
+                pickingShelf = currentTarget;
+                pickBeat = 0f;
                 currentTarget = null;
             }
         }
@@ -150,16 +295,29 @@ namespace MiniMart.AI
         {
             ShopShelf best = null;
             foreach (var s in allShelves)
+            {
+                if (s == null || !s.gameObject.activeInHierarchy) continue; // not purchased yet
                 if (s.Item == item && s.Count > 0 && (best == null || s.Count > best.Count)) best = s;
+            }
             return best;
         }
 
-        private Economy.CashCounter FindOpenCounter()
+        private Economy.CashCounter FindUnlockedCounter()
         {
             Economy.CashCounter best = null;
             foreach (var c in counters)
-                if (c.IsOpen && (best == null || c.Line.Count < best.Line.Count)) best = c;
+                if (c.IsUnlocked && (best == null || c.Line.Count < best.Line.Count)) best = c;
             return best;
+        }
+
+        private void LeaveWithoutPaying(string reason)
+        {
+            Engine.Emote.Angry(transform.position);
+            Debug.Log($"[Buyer] {Kind} buyer {reason} — leaving.");
+            HasCheckedOut = true; // never pays, never re-shops
+            leaving = true;
+            if (ExitDoor != null) SetTarget(ExitDoor.position);
+            else Destroy(gameObject, 1f);
         }
 
         public void OnCheckedOut()

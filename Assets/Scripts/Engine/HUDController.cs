@@ -40,6 +40,17 @@ namespace MiniMart.UI
         [Header("Inventory readout")]
         public Text InventoryLabel;
 
+        [Header("Offline earnings")]
+        public GameObject OfflinePanel;
+        public Text OfflineLabel;
+        public Button CollectOfflineButton;
+
+        [Header("Level up")]
+        public GameObject LevelUpPanel;
+        public Text LevelUpLabel;
+        public Button LevelUpOkButton;
+        private int lastSeenStoreLevel = -1;
+
         private GameManager gm;
         private Engine.PhoneOrderManager phoneOrders;
         private Engine.PhoneOrder pendingOrder;
@@ -62,11 +73,29 @@ namespace MiniMart.UI
             if (phoneOrders != null)
                 phoneOrders.OnNewOrder += ShowPhoneOrder;
 
+            CollectOfflineButton?.onClick.AddListener(() =>
+            {
+                gm?.DismissOfflineSummary();
+                OfflinePanel?.SetActive(false);
+            });
+
+            LevelUpOkButton?.onClick.AddListener(() => LevelUpPanel?.SetActive(false));
+
             PauseOverlay?.SetActive(false);
             PhoneOrderPanel?.SetActive(false);
             PricePanel?.SetActive(false);
             UpgradePanel?.SetActive(false);
+            OfflinePanel?.SetActive(false);
+            LevelUpPanel?.SetActive(false);
         }
+
+        private static string UnlockTextFor(int level) => level switch
+        {
+            2 => "Cashier 1 hired — Counter 1 runs itself now!\nKetchup unlocked for sale.",
+            3 => "Wheat Flour unlocked!\nWatch out — thieves start prowling from now on.",
+            4 => "Bread unlocked!\nCash Counter 2 opens with its own cashier.",
+            _ => "Customers arrive faster and orders get bigger!",
+        };
 
         private void Update()
         {
@@ -79,11 +108,29 @@ namespace MiniMart.UI
 
             if (gm.Economy == null) return;
 
+            // Store level-up popup: fires on level changes after the first observed value,
+            // so loading a save doesn't greet the player with a stale "LEVEL UP!".
+            if (lastSeenStoreLevel < 0) lastSeenStoreLevel = gm.StoreLevel;
+            else if (gm.StoreLevel > lastSeenStoreLevel)
+            {
+                lastSeenStoreLevel = gm.StoreLevel;
+                if (LevelUpLabel != null)
+                    LevelUpLabel.text = $"Store Level {gm.StoreLevel}\n\n{UnlockTextFor(gm.StoreLevel)}";
+                LevelUpPanel?.SetActive(true);
+            }
+
+            // Show the welcome-back report once, when the boot computed one.
+            if (gm.OfflineSummary != null && OfflinePanel != null && !OfflinePanel.activeSelf)
+            {
+                if (OfflineLabel != null) OfflineLabel.text = gm.OfflineSummary;
+                OfflinePanel.SetActive(true);
+            }
+
             if (CashLabel != null)
                 CashLabel.text = $"${gm.Economy.PlayerCash:F0}";
 
-            if (LevelLabel != null && gm.Player != null)
-                LevelLabel.text = $"Lv {gm.Player.Level}";
+            if (LevelLabel != null)
+                LevelLabel.text = $"Lv {gm.StoreLevel}  {gm.StoreXp}/{gm.XpToNextLevel} XP";
 
             // Grey out FULFIL until storage can actually cover the order — tapping it
             // with short stock did nothing but log "Not enough stock".

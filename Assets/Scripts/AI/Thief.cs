@@ -61,7 +61,10 @@ namespace MiniMart.AI
             // Pick the shelf with the most stock (easiest grab).
             ShopShelf best = null;
             foreach (var s in TargetShelves)
+            {
+                if (s == null || !s.gameObject.activeInHierarchy) continue; // not purchased yet
                 if (s.Count > 0 && (best == null || s.Count > best.Count)) best = s;
+            }
 
             if (best == null) { StartFlee(); return; }
             currentTarget = best;

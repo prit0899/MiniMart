@@ -12,6 +12,7 @@ namespace MiniMart.Characters
         public HenCoop henCoop;
         public WheatFarm wheatFarm;
         public TomatoFarm tomatoFarm;
+        public CowPen cowPen;
         private StoreInventory inventory;
 
         private enum FarmerState
@@ -20,6 +21,7 @@ namespace MiniMart.Characters
             GoingToHenCoop,
             GoingToWheatFarm,
             GoingToTomatoFarm,
+            GoingToCowPen,
             GoingToDeposit
         }
 
@@ -27,6 +29,7 @@ namespace MiniMart.Characters
         private int eggsCount = 0;
         private int wheatCount = 0;
         private int tomatoCount = 0;
+        private int milkCount = 0;
 
         public void Configure(StoreInventory storeInventory)
         {
@@ -40,9 +43,11 @@ namespace MiniMart.Characters
         {
             if (TryPickUp(amount))
             {
+                CarryColor = Engine.PrimitiveFactory.ItemColor(item);
                 if (item == ItemType.Egg) eggsCount += amount;
                 else if (item == ItemType.Wheat) wheatCount += amount;
                 else if (item == ItemType.Tomato) tomatoCount += amount;
+                else if (item == ItemType.Milk) milkCount += amount;
                 return true;
             }
             return false;
@@ -54,6 +59,7 @@ namespace MiniMart.Characters
             eggsCount = 0;
             wheatCount = 0;
             tomatoCount = 0;
+            milkCount = 0;
         }
 
         private int farmCursor; // rotates coop -> wheat -> tomato so every farm gets serviced
@@ -61,30 +67,51 @@ namespace MiniMart.Characters
         private bool HasStorageRoom(ItemType item) =>
             inventory != null && inventory.Stocks.TryGetValue(item, out var s) && s.Count < s.MaxCapacity;
 
+        private bool FarmActive(Component c) => c != null && c.gameObject.activeInHierarchy;
+
+        /// <summary>Walk to the rack of whichever item we carry most of (racks sit
+        /// next to their sources now — no more single central depot).</summary>
+        private Vector3 DepositTarget()
+        {
+            ItemType best = ItemType.Egg;
+            int most = eggsCount;
+            if (wheatCount > most) { best = ItemType.Wheat; most = wheatCount; }
+            if (tomatoCount > most) { best = ItemType.Tomato; most = tomatoCount; }
+            if (milkCount > most) { best = ItemType.Milk; most = milkCount; }
+            return Engine.StorageRack.PositionOf(best, new Vector3(5f, 0f, 10f));
+        }
+
         private bool TryChooseFarm()
         {
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 4; i++)
             {
-                int pick = (farmCursor + i) % 3;
-                if (pick == 0 && henCoop != null && henCoop.TotalEggsReady() > 0 && HasStorageRoom(ItemType.Egg))
+                int pick = (farmCursor + i) % 4;
+                if (pick == 0 && FarmActive(henCoop) && henCoop.TotalEggsReady() > 0 && HasStorageRoom(ItemType.Egg))
                 {
                     farmCursor = 1;
                     fState = FarmerState.GoingToHenCoop;
                     SetTarget(henCoop.transform.position);
                     return true;
                 }
-                if (pick == 1 && wheatFarm != null && wheatFarm.ReadyCount() > 0 && HasStorageRoom(ItemType.Wheat))
+                if (pick == 1 && FarmActive(wheatFarm) && wheatFarm.ReadyCount() > 0 && HasStorageRoom(ItemType.Wheat))
                 {
                     farmCursor = 2;
                     fState = FarmerState.GoingToWheatFarm;
                     SetTarget(wheatFarm.transform.position);
                     return true;
                 }
-                if (pick == 2 && tomatoFarm != null && tomatoFarm.TotalRipe() > 0 && HasStorageRoom(ItemType.Tomato))
+                if (pick == 2 && FarmActive(tomatoFarm) && tomatoFarm.TotalRipe() > 0 && HasStorageRoom(ItemType.Tomato))
                 {
-                    farmCursor = 0;
+                    farmCursor = 3;
                     fState = FarmerState.GoingToTomatoFarm;
                     SetTarget(tomatoFarm.transform.position);
+                    return true;
+                }
+                if (pick == 3 && FarmActive(cowPen) && cowPen.TotalMilkReady() > 0 && HasStorageRoom(ItemType.Milk))
+                {
+                    farmCursor = 0;
+                    fState = FarmerState.GoingToCowPen;
+                    SetTarget(cowPen.transform.position);
                     return true;
                 }
             }
@@ -113,7 +140,7 @@ namespace MiniMart.Characters
                     if (CarryCount > 0)
                     {
                         fState = FarmerState.GoingToDeposit;
-                        SetTarget(new Vector3(5f, 0f, 10f)); // default storage area
+                        SetTarget(DepositTarget());
                     }
                     break;
 
@@ -144,12 +171,22 @@ namespace MiniMart.Characters
                     fState = FarmerState.Deciding;
                     break;
 
+                case FarmerState.GoingToCowPen:
+                    if (cowPen != null)
+                    {
+                        int milk = cowPen.Collect(room);
+                        if (milk > 0) TryPickUpItem(milk, ItemType.Milk);
+                    }
+                    fState = FarmerState.Deciding;
+                    break;
+
                 case FarmerState.GoingToDeposit:
                     if (CarryCount > 0 && inventory != null)
                     {
                         if (eggsCount > 0) inventory.Deposit(ItemType.Egg, eggsCount);
                         if (wheatCount > 0) inventory.Deposit(ItemType.Wheat, wheatCount);
                         if (tomatoCount > 0) inventory.Deposit(ItemType.Tomato, tomatoCount);
+                        if (milkCount > 0) inventory.Deposit(ItemType.Milk, milkCount);
                         DropAllFarmer();
                     }
                     fState = FarmerState.Deciding;

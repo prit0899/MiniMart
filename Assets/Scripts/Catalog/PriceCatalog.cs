@@ -18,6 +18,8 @@ namespace MiniMart.Catalog
             { ItemType.Wheat, 0.30f },
             { ItemType.WheatFlour, 0.80f },
             { ItemType.Bread, 1.50f },
+            { ItemType.Milk, 0.50f },
+            { ItemType.Cheese, 1.35f },
         };
 
         /// <summary>Player level at which an item becomes purchasable/visible to buyers.</summary>
@@ -29,6 +31,8 @@ namespace MiniMart.Catalog
             { ItemType.Wheat, 2 },
             { ItemType.WheatFlour, 3 },
             { ItemType.Bread, 4 }, // GDD 7: bread (oven) is the level-4 unlock
+            { ItemType.Milk, 2 },
+            { ItemType.Cheese, 3 },
         };
 
         public const int CashCounter1UnlockLevel = 1; // available by default (manned from lvl 2, see EconomyCatalog)

@@ -8,7 +8,9 @@ namespace MiniMart.Core
         TomatoKetchup,
         Wheat,
         WheatFlour,
-        Bread
+        Bread,
+        Milk,   // cow pen (reference dairy chain)
+        Cheese  // milk -> dairy processor
     }
 
     /// <summary>Which character role owns a piece of state / logic.</summary>
