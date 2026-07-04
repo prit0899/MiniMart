@@ -16,10 +16,16 @@ namespace MiniMart.Economy
         public int CounterIndex; // 1 or 2
         public bool IsUnlocked;
         public bool HasCashier;
-        [System.NonSerialized] public Queue<Buyer> Line = new Queue<Buyer>();
+        [System.NonSerialized] public List<Buyer> Line = new List<Buyer>();
 
         public bool IsOpen => IsUnlocked && (HasCashier || ManualOverride);
         public bool ManualOverride; // true while the player is physically running the till
+
+        /// <summary>GDD 4: seconds per checkout; the player manning the till works 3x faster.</summary>
+        public float SecondsPerCheckout = 1.2f;
+        private float sinceLastCheckout;
+
+        private Characters.Cashier cashierVisual;
 
         public void RefreshUnlockState(int playerLevel)
         {
@@ -33,21 +39,75 @@ namespace MiniMart.Economy
                 IsUnlocked = playerLevel >= PriceCatalog.CashCounter2UnlockLevel;
                 HasCashier = IsUnlocked; // counter 2 always comes with its cashier per spec
             }
+
+            // HasCashier was only ever a bool — no character existed in the world.
+            // Spawn a visible cashier behind the till when one is hired.
+            if (HasCashier && cashierVisual == null)
+            {
+                var go = new GameObject($"Cashier_{CounterIndex}");
+                go.transform.position = transform.position + new Vector3(0, 0, 0.95f);
+                cashierVisual = go.AddComponent<Characters.Cashier>();
+                cashierVisual.AssignTo(this);
+                go.AddComponent<Engine.WobbleAnimator>();
+                Engine.PrimitiveFactory.BuildCharacter(go, new Color(0.95f, 0.55f, 0.20f)); // orange uniform
+            }
+            else if (!HasCashier && cashierVisual != null)
+            {
+                Destroy(cashierVisual.gameObject);
+                cashierVisual = null;
+            }
         }
 
-        public void Enqueue(Buyer buyer) => Line.Enqueue(buyer);
+        /// <summary>World position for the Nth buyer in line — a tidy row in front of the till
+        /// instead of everyone stacking on one point.</summary>
+        public Vector3 GetQueueSlot(int index) =>
+            transform.position + new Vector3(0, 0, -1.15f * (index + 1));
 
-        /// <summary>Processes the front of the line once per checkout tick; returns revenue taken.</summary>
-        public float ProcessFront(EconomyManager economy)
+        public void Enqueue(Buyer buyer) { if (!Line.Contains(buyer)) Line.Add(buyer); }
+
+        /// <summary>Impatient buyers abandon the queue; safe if the buyer isn't in line.</summary>
+        public void RemoveFromLine(Buyer buyer) => Line.Remove(buyer);
+
+        /// <summary>Processes the front of the line on a real-time cadence; returns revenue taken.</summary>
+        public float ProcessFront(EconomyManager economy, float dt)
         {
+            sinceLastCheckout += dt;
             if (Line.Count == 0 || !IsOpen) return 0f;
-            var buyer = Line.Dequeue();
+
+            // Player at the till = 3x checkout speed (GDD 4 "manual checkout override").
+            float needed = ManualOverride ? SecondsPerCheckout / 3f : SecondsPerCheckout;
+            if (sinceLastCheckout < needed) return 0f;
+            sinceLastCheckout = 0f;
+
+            var buyer = Line[0];
+            Line.RemoveAt(0);
+            if (buyer == null) return 0f;
 
             // Charge for what the buyer actually took off the shelves. Basket is the
             // REMAINING wish-list (it empties as they shop), so quoting it charged
             // buyers for exactly the items they failed to find.
             float total = buyer.Collected.Count > 0 ? economy.QuoteBasket(buyer.Collected) : 0f;
-            if (total > 0f) economy.Deposit(total);
+
+            // Satisfied customers (found everything on their list) sometimes tip 10-25%.
+            bool tipped = false;
+            if (total > 0f && buyer.Basket.Count == 0 && Random.value < 0.20f)
+            {
+                total += total * Random.Range(0.10f, 0.25f);
+                tipped = true;
+            }
+
+            // Reference feedback: happy face on every sale, a heart when they tipped.
+            if (total > 0f)
+            {
+                Engine.Emote.Happy(buyer.transform.position);
+                if (tipped) Engine.Emote.Heart(buyer.transform.position + new Vector3(0.4f, 0.3f, 0));
+            }
+
+            // Reference flow: revenue is NOT auto-banked — it piles up as a physical money
+            // stack beside the till, and the player walks over it to collect (cash + XP).
+            if (total > 0f)
+                Engine.MoneyStack.SpawnOrMerge(transform.position + new Vector3(1.1f, 0, -0.4f), total);
+
             buyer.OnCheckedOut();
             return total;
         }

@@ -14,6 +14,8 @@ namespace MiniMart.Save
     {
         public int PlayerLevel;
         public float PlayerCash;
+        public int StoreLevel;   // store progression (drives unlocks); 0 in old saves -> treated as 1
+        public int StoreXp;
 
         [NonSerialized] public Dictionary<string, int> Inventory = new Dictionary<string, int>();     // ItemType.ToString() -> count
         [NonSerialized] public Dictionary<string, int> UpgradeLevels = new Dictionary<string, int>(); // "Machine_Blender" etc.
@@ -21,6 +23,7 @@ namespace MiniMart.Save
 
         public float TotalPlaySeconds;
         public string SaveTimestamp;
+        public List<string> PurchasedPads = new List<string>(); // expansion pads already bought
 
         // ── Serialized backing storage (JsonUtility-compatible) ──
         [SerializeField] private List<string> _invKeys = new List<string>();

@@ -40,6 +40,9 @@ namespace MiniMart.Engine
 
         [System.NonSerialized] public List<PhoneOrder> ActiveOrders = new List<PhoneOrder>();
 
+        [System.NonSerialized] public Transform SpawnSpot;
+        [System.NonSerialized] public Transform PickupSpot;
+
         private float spawnTimer;
         private float nextSpawnTime;
         private int playerLevel = 1;
@@ -66,13 +69,26 @@ namespace MiniMart.Engine
                 ScheduleNext();
             }
 
-            // Tick down active order windows and purge expired ones.
+            // Tick down active order windows and purge expired ones, process fulfilled ones.
             for (int i = ActiveOrders.Count - 1; i >= 0; i--)
             {
-                ActiveOrders[i].TimeRemaining -= Time.deltaTime;
-                if (ActiveOrders[i].IsExpired)
+                var order = ActiveOrders[i];
+                if (!order.IsFulfilled && order.Items.Count == 0)
                 {
-                    Debug.Log($"Phone order {ActiveOrders[i].Id} expired.");
+                    // Physically fulfilled by loading the van!
+                    float revenue = order.Value;
+                    Economy?.Deposit(revenue);
+                    GameManager.Instance?.AddStoreXp(25);
+                    order.IsFulfilled = true;
+                    Debug.Log($"Phone order {order.Id} physically fulfilled — earned ${revenue:F2}");
+                    ActiveOrders.RemoveAt(i);
+                    continue;
+                }
+                
+                order.TimeRemaining -= Time.deltaTime;
+                if (order.IsExpired)
+                {
+                    Debug.Log($"Phone order {order.Id} expired.");
                     ActiveOrders.RemoveAt(i);
                 }
             }
@@ -118,6 +134,15 @@ namespace MiniMart.Engine
             // Premium payout scaled by order size, clamped to the GDD range.
             order.Value = Mathf.Clamp(45f + retailTotal * 60f, 45f, 300f);
             ActiveOrders.Add(order);
+            
+            if (SpawnSpot != null && PickupSpot != null)
+            {
+                var vanGO = new GameObject($"DeliveryVan_{order.Id}");
+                var vanComp = vanGO.AddComponent<Characters.DeliveryVan>();
+                PrimitiveFactory.VanVisual(vanGO);
+                vanComp.Init(order, PickupSpot, SpawnSpot);
+            }
+            
             Debug.Log($"Phone order {order.Id} arrived — value ${order.Value:F2}");
             OnNewOrder?.Invoke(order);
         }
@@ -131,10 +156,24 @@ namespace MiniMart.Engine
             Debug.Log($"Phone order {order.Id} dismissed.");
         }
 
+        /// <summary>Van finished loading all requested items — pay out and close the order.
+        /// Without this, loading the van drained Order.Items but never paid, and the
+        /// emptied order became vacuously "fulfillable" via the HUD for free money.</summary>
+        public void CompleteByVan(PhoneOrder order)
+        {
+            if (order == null || order.IsExpired || order.IsFulfilled) return;
+            order.IsFulfilled = true;
+            Economy?.Deposit(order.Value);
+            GameManager.Instance?.AddStoreXp(25);
+            ActiveOrders.Remove(order);
+            Debug.Log($"Phone order {order.Id} loaded onto the van — earned ${order.Value:F2}");
+        }
+
         /// <summary>True when current store inventory can cover every line of the order.</summary>
         public bool CanFulfil(PhoneOrder order)
         {
             if (order == null || order.IsExpired || order.IsFulfilled || Inventory == null) return false;
+            if (order.Items.Count == 0) return false; // drained by the van — nothing to fulfil
             foreach (var kv in order.Items)
                 if (Inventory.CountOf(kv.Key) < kv.Value) return false;
             return true;
@@ -144,6 +183,7 @@ namespace MiniMart.Engine
         public bool TryFulfil(PhoneOrder order)
         {
             if (order == null || order.IsExpired || order.IsFulfilled) return false;
+            if (order.Items.Count == 0) return false; // drained by the van — nothing to fulfil
             // Check we have enough stock for every line item.
             foreach (var kv in order.Items)
                 if (Inventory.CountOf(kv.Key) < kv.Value) return false;
@@ -155,6 +195,7 @@ namespace MiniMart.Engine
             // sum (cents), which would silently pay ~$1 for a "$75" order.
             float revenue = order.Value;
             Economy?.Deposit(revenue);
+            GameManager.Instance?.AddStoreXp(25); // phone orders are the big XP earner
             order.IsFulfilled = true;
             ActiveOrders.Remove(order);
             Debug.Log($"Phone order {order.Id} fulfilled — earned ${revenue:F2}");

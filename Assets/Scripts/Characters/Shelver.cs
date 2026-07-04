@@ -45,6 +45,7 @@ namespace MiniMart.Characters
             int worstDeficit = -1;
             foreach (var shelf in AssignedShelves)
             {
+                if (shelf == null || !shelf.gameObject.activeInHierarchy) continue; // not purchased yet
                 if (!IsResponsibleFor(shelf.Item)) continue;
                 int deficit = shelf.Capacity - shelf.Count;
                 if (deficit > worstDeficit)
@@ -56,21 +57,42 @@ namespace MiniMart.Characters
 
             if (needsRestock != null && worstDeficit > 0 && inventory.CountOf(needsRestock.Item) > 0)
             {
-                int amount = Mathf.Min(worstDeficit, CarryCapacity - CarryCount, inventory.CountOf(needsRestock.Item));
-                if (amount > 0)
-                {
-                    inventory.Withdraw(needsRestock.Item, amount);
-                    TryPickUp(amount);
-                    SetTarget(needsRestock.transform.position);
-                    pendingShelf = needsRestock;
-                    pendingAmount = amount;
-                }
+                // Two-leg trip: walk to the item's storage rack first, pick up there,
+                // THEN carry to the shelf. (Previously the shelver withdrew from thin
+                // air wherever it stood — invisible, and looked like it did nothing.)
+                pendingShelf = needsRestock;
+                fetching = true;
+                SetTarget(Engine.StorageRack.PositionOf(needsRestock.Item, needsRestock.transform.position));
             }
         }
+
+        private bool fetching;
 
         protected override void OnArrived()
         {
             base.OnArrived();
+
+            if (fetching && pendingShelf != null)
+            {
+                fetching = false;
+                int amount = Mathf.Min(pendingShelf.Capacity - pendingShelf.Count,
+                                       CarryCapacity - CarryCount,
+                                       inventory != null ? inventory.CountOf(pendingShelf.Item) : 0);
+                if (amount > 0 && inventory.Withdraw(pendingShelf.Item, amount))
+                {
+                    CarryColor = Engine.PrimitiveFactory.ItemColor(pendingShelf.Item);
+                    TryPickUp(amount);
+                    pendingAmount = amount;
+                    SetTarget(pendingShelf.transform.position);
+                }
+                else
+                {
+                    pendingShelf = null;
+                    pendingAmount = 0;
+                }
+                return;
+            }
+
             if (pendingShelf != null)
             {
                 pendingShelf.AddStock(pendingAmount);
@@ -98,6 +120,8 @@ namespace MiniMart.Characters
 
         private TextMesh badge;
         private int lastShown = -1;
+        
+        private GameObject[] itemVisuals;
 
         private void Start()
         {
@@ -118,6 +142,25 @@ namespace MiniMart.Characters
                 if (mr != null) mr.material = font.material;
             }
             go.AddComponent<Billboard>();
+            
+            // Visuals
+            itemVisuals = new GameObject[Capacity];
+            Color itemCol = Engine.PrimitiveFactory.ItemColor(Item);
+            Material mat = Engine.PrimitiveFactory.NewColoredMaterial(itemCol);
+            for (int i = 0; i < Capacity; i++)
+            {
+                var vis = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                vis.transform.SetParent(transform, false);
+                vis.transform.localScale = new Vector3(0.4f, 0.4f, 0.4f);
+                // Stack them in two columns of 5, or just one tall stack
+                float x = (i % 2 == 0) ? -0.25f : 0.25f;
+                float y = 0.2f + (i / 2) * 0.45f;
+                vis.transform.localPosition = new Vector3(x, y, 0);
+                Destroy(vis.GetComponent<Collider>());
+                vis.GetComponent<MeshRenderer>().material = mat;
+                vis.SetActive(false);
+                itemVisuals[i] = vis;
+            }
         }
 
         private void Update()
@@ -126,6 +169,11 @@ namespace MiniMart.Characters
             {
                 lastShown = Count;
                 badge.text = $"{Count}/{Capacity}";
+                
+                for (int i = 0; i < itemVisuals.Length; i++)
+                {
+                    itemVisuals[i].SetActive(i < Count);
+                }
             }
         }
 

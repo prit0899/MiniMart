@@ -1,5 +1,62 @@
 # Mini Mart — Living Backlog
-**Updated:** 2026-07-03 (batch 3 — production chain unblocked, save hardened)
+**Updated:** 2026-07-04 (batch 4 — Farm-Market spec cherry-pick: store XP/level, tips, offline earnings)
+
+## Batch 10 (verify on next run) — playtest integration fixes
+- [ ] **Per-source storage racks** — the single depot is gone. Egg rack by the coop, tomato+ketchup racks by the plants, wheat+flour racks by the wheat farm, milk+cheese racks by the cow, bread rack by the oven. Each shows its own live n/cap badge; racks appear with their purchase pads. Player deposits per-item at the matching rack; farmer walks to the dominant item's rack; chef withdraws/deposits at the right racks.
+- [ ] **Shelvers now physically fetch** — two-leg trip (rack → shelf) instead of withdrawing from thin air; with visible colored carry stacks.
+- [ ] **Buyers pick items one per beat** — thought bubble now visibly ticks 1/4 → 2/4 → …; buyers/chef/farmer/shelvers all have carry-stack visuals.
+- [ ] **Van no longer parks in the doorway** — pickup spot moved outside onto the grass below the entrance ((2.5, 4.5) instead of (2, 7)).
+- [ ] **Bins work** — stand at a dustbin to throw away everything you carry (grey "x" emote).
+- [ ] Note: "buyer paying without buying" — buyers only pay when they collected ≥1 item; a single cheap item rings up the $1.00 minimum-basket floor by design (GDD 6.1). If that floor reads as a bug in playtests, remove it from buyer checkout.
+
+## Batch 9 — systematic logic test pass (see [TEST-REPORT.md](TEST-REPORT.md))
+- [x] **30,116 simulated test cases, all passing** — curves, economy, storage, machines, farms, XP/unlocks, phone orders, 1,000 randomized buyers, pads, offline earnings, 12 Monte-Carlo full-loop worlds with per-tick invariants.
+- [x] **Bug: machines destroyed product when output tray full** — now stall (Machine.cs).
+- [x] **Bug: delivery-van money exploit** — van now pays + closes the order when fully loaded; drained orders can't be HUD-fulfilled (PhoneOrderManager/DeliveryVan).
+- [x] **Bug: manual prices unclamped** — SetManualPrice now enforces the GDD ±50% band centrally (EconomyManager).
+
+## Batch 8 (verify on next run) — bubbles, emotes, dairy chain
+- [ ] **Thought bubbles** — buyers show a white bubble with a colored item chip + "have/want" fraction while shopping, "$" chip while queueing (ThoughtBubble.cs).
+- [ ] **Emotes** — ":)" on every sale, "<3" when tipped, ">:(" on queue walk-out, "?" when an item was sold out (Emote.cs).
+- [ ] **Dairy chain** — Cow Pen ($100 pad, includes Milk shelf) → Dairy machine ($175 pad, includes Cheese shelf). Milk $0.50 (unlock L2), Cheese $1.35 (L3). Farmer milks the cow in his rotation; Shelver A stocks milk, Shelver B cheese; player loads/collects the Dairy; levels save; upgrade panel has Dairy + Cow Pen rows.
+- [ ] Note: only the player runs the Dairy machine for now (chef's chains remain ketchup + bread) — chef dairy support queued.
+
+## Batch 7 (verify on next run) — REFERENCE FLOW RESTRUCTURE (see [REFERENCE-FLOW.md](REFERENCE-FLOW.md))
+- [ ] **World starts nearly empty** — only tomato farm, tomato stand, Counter 1, depot. Coop, wheat farm, all 3 machines, their shelves, all 4 workers, and Counter 2 are bought via walk-over **purchase pads** (arrow + cost that drains while you stand on it). $10 starting cash.
+- [ ] **Money stacks** — checkout piles physical cash beside the till; walk over it to collect (grants cash + store XP). No more auto-banking.
+- [ ] **Carry scale 15→44** with taller stack visual and a red **MAX** badge when full; faster harvest cadence to match.
+- [ ] **Purchases persist** in the save (`PurchasedPads`); bought pads restore for free on load.
+- [ ] Buyers only wish for items whose shelf is actually purchased; thief/shelvers/player ignore unpurchased shelves.
+- [ ] Next for parity: customer thought bubbles (icon + n/m), happy-face+heart on sale, milk/cheese content chain.
+
+## Batch 6 (verify on next run) — playtest bug sweep
+- [ ] **Visible cashiers** — an orange-uniformed cashier NPC now spawns behind the till when hired (store Lv 2 / counter 2 at Lv 4) and despawns if staffing changes.
+- [ ] **Buyer spawn drought fixed (again)** — buyers who finished shopping with no open counter used to freeze forever and silently fill the 12-buyer cap. They now wait near the tills with patience, join the queue the moment a counter opens (or the player arrives), and walk out if nobody shows.
+- [ ] **Queues form as a line** — spaced queue slots per counter; buyers shuffle forward as the line advances instead of stacking on one point.
+- [ ] **Player-at-till radius** widened to 3.0 so manning the counter reliably collects cash.
+- [ ] **Storage/machine showcase** — StorageBadge lists inventory over the depot; MachineBadge shows "in n/cap out n" over Blender/Mill/Oven; shelf badges already live.
+- [ ] **Carry stack colors** — carried cubes tint to the item color. Limitation: a mixed stack shows the last item's color; per-cube coloring is queued below.
+- [ ] **Delivery vans for phone orders** — van drives in with a WANTED list; stand near it with goods to load; leaves when filled or expired.
+
+### Queued from UX/edge-case review doc
+- [ ] "Inventory Full / MAX" blocked-action feedback (flash + floating text) instead of silent no-op.
+- [ ] Sold-out U-turn: thought bubble + sad emote when a buyer's item runs out mid-walk.
+- [ ] Coin-fly-to-HUD + "ka-ching" on checkout (juice pass, with harvest pops and restock slides).
+- [ ] Tutorial arrows for the first 60 seconds (harvest → shelf → register → upgrade).
+- [ ] Per-cube carry-stack coloring (track item type per slot in CarryVisual).
+- [ ] Interactable highlight ring when the player is in range of a usable object.
+
+## Batch 5 (verify on next run) — player agency + liveliness
+- [ ] **Player proximity interactions (NEW — was completely missing!)** — stand at a farm to harvest, at the storage depot (new pallet-and-crates object at the worker drop point) to deposit, at a machine to load/collect, at a shelf to stock it. The "player does everything" pillar now exists (`PlayerInteraction.cs`).
+- [ ] **Player-at-counter 3× checkout** — checkout now takes 1.2 s per buyer (0.4 s when the player mans the till). GDD 4 satisfied.
+- [ ] **Customer personalities** — Normal / Impatient (fast, 12 s queue patience) / Bargain (small baskets) / Rich (big baskets, trolleys). Impatient buyers abandon long queues and walk out.
+- [ ] **Store level-up popup** — "LEVEL UP!" panel with per-level unlock text (cashier at 2, thief warning at 3, bread + counter 2 at 4).
+
+## Batch 4 (verify on next run) — see [FARM-SPEC-NOTES.md](FARM-SPEC-NOTES.md)
+- [ ] **Store XP & level** — revenue earns XP ($1 = 1 XP, phone orders +25); store level now drives ALL unlocks (cashier, counter 2, items, thief) instead of the player's personal upgrade level. HUD shows `Lv N  x/y XP`.
+- [ ] **Customer tips** — buyers who found everything tip 10–25% (20% chance).
+- [ ] **Offline earnings** — away ≥2 min (cap 4 h): storage trickles eggs/tomato/wheat + offline sales coins; "WELCOME BACK!" panel with COLLECT on launch.
+- [ ] From the spec, queued: customer personalities, patience/angry-leave, daily quests, level-up popup, daily rewards, more crops. Rejected: 2D pivot, watering/wither, Firebase, gems (reasons in FARM-SPEC-NOTES).
 
 ## Batch 3 fixes (verify on next run)
 - [ ] **Farmer round-robin** — was egg-starved (hens always ready → never harvested wheat/tomato → whole chain dry, Shelver 2 had nothing to do). Now rotates coop→wheat→tomato, skipping full storages.

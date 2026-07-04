@@ -20,9 +20,10 @@ namespace MiniMart.Catalog
             return curve;
         }
 
-        // ---- Player: lvl1 stack4 -> lvl5 stack7, speed rises every level, always fastest. ----
+        // ---- Player: reference-flow carry scale (starts ~15, upgrades toward 44+),
+        //      speed rises every level, always fastest. ----
         public static UpgradeCurve PlayerCurve() => Build(
-            new[] { 4, 4, 5, 6, 7 },                          // GDD 3.1 player table
+            new[] { 15, 22, 29, 36, 44 },                     // reference video: CARRY 15 -> 44+
             new[] { 1.30f, 1.45f, 1.60f, 1.75f, 1.90f },      // always above every NPC curve below
             new[] { 0, 50, 100, 200, 500 });
 
@@ -49,8 +50,8 @@ namespace MiniMart.Catalog
         /// <summary>What each shelver role is responsible for stocking, per spec Section 1.</summary>
         public static readonly Dictionary<RoleType, ItemType[]> RoleResponsibilities = new Dictionary<RoleType, ItemType[]>
         {
-            { RoleType.Shelver1, new[] { ItemType.Egg, ItemType.TomatoKetchup, ItemType.Tomato } },
-            { RoleType.Shelver2, new[] { ItemType.Wheat, ItemType.WheatFlour, ItemType.Bread } },
+            { RoleType.Shelver1, new[] { ItemType.Egg, ItemType.TomatoKetchup, ItemType.Tomato, ItemType.Milk } },
+            { RoleType.Shelver2, new[] { ItemType.Wheat, ItemType.WheatFlour, ItemType.Bread, ItemType.Cheese } },
         };
 
         /// <summary>

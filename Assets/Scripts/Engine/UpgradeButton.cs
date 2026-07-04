@@ -19,6 +19,7 @@ namespace MiniMart.UI
         public CharacterBase TargetCharacter;
         public Machine TargetMachine;
         public HenCoop TargetHenCoop;
+        public CowPen TargetCowPen;
 
         private static readonly Color CostGreen = new Color(0.35f, 0.78f, 0.28f, 1f);
         private static readonly Color MaxedGray = new Color(0.74f, 0.74f, 0.74f, 1f);
@@ -46,6 +47,10 @@ namespace MiniMart.UI
             else if (TargetHenCoop != null)
             {
                 Set(TargetHenCoop.Level, 4, TargetHenCoop.NextUpgradeCost);
+            }
+            else if (TargetCowPen != null)
+            {
+                Set(TargetCowPen.Level, 4, TargetCowPen.NextUpgradeCost);
             }
         }
 
@@ -87,6 +92,12 @@ namespace MiniMart.UI
                 int cost = TargetHenCoop.NextUpgradeCost;
                 if (cost < 0 || !eco.TrySpend(cost)) return;
                 TargetHenCoop.TryUpgrade(out _);
+            }
+            else if (TargetCowPen != null)
+            {
+                int cost = TargetCowPen.NextUpgradeCost;
+                if (cost < 0 || !eco.TrySpend(cost)) return;
+                TargetCowPen.TryUpgrade(out _);
             }
         }
     }
@@ -175,9 +186,11 @@ namespace MiniMart.UI
             AddRow(tabContents[1], "Blender", RowMachines, font, machine: gm.Blender);
             AddRow(tabContents[1], "Bread Oven", RowMachines, font, machine: gm.Oven);
             AddRow(tabContents[1], "Wheat Mill", RowMachines, font, machine: gm.Mill);
+            AddRow(tabContents[1], "Dairy", RowMachines, font, machine: gm.Dairy);
 
             // Animals tab.
             AddRow(tabContents[2], "Hen Coop", RowAnimals, font, coop: gm.HenCoop);
+            AddRow(tabContents[2], "Cow Pen", RowAnimals, font, cowPen: gm.CowPen);
 
             ShowTab(0);
         }
@@ -195,9 +208,9 @@ namespace MiniMart.UI
         }
 
         private void AddRow(GameObject parent, string displayName, Color rowColor, Font font,
-            CharacterBase character = null, Machine machine = null, HenCoop coop = null)
+            CharacterBase character = null, Machine machine = null, HenCoop coop = null, CowPen cowPen = null)
         {
-            if (character == null && machine == null && coop == null) return;
+            if (character == null && machine == null && coop == null && cowPen == null) return;
 
             var rowGO = new GameObject($"Row_{displayName}", typeof(RectTransform));
             rowGO.transform.SetParent(parent.transform, false);
@@ -211,6 +224,7 @@ namespace MiniMart.UI
             row.TargetCharacter = character;
             row.TargetMachine = machine;
             row.TargetHenCoop = coop;
+            row.TargetCowPen = cowPen;
 
             // Name (left).
             row.NameLabel = MakeText("Name", rowGO.transform, displayName, font, 22, TextAnchor.MiddleLeft, Color.white, true);

@@ -109,6 +109,10 @@ namespace MiniMart
             var wheatFarmComp = wheatFarmGO.AddComponent<WheatFarm>();
             PrimitiveFactory.WheatFarm(wheatFarmGO);
 
+            var cowPenGO = CreateAt("CowPen", new Vector2(26, 3.5f));
+            var cowPenComp = cowPenGO.AddComponent<CowPen>();
+            PrimitiveFactory.CowPen(cowPenGO);
+
             // ═══════════════════════════════════════════════════════════════════
             //  3. MACHINES (inside store, right side)
             // ═══════════════════════════════════════════════════════════════════
@@ -117,16 +121,25 @@ namespace MiniMart
             var blenderComp = blenderGO.AddComponent<Machine>();
             blenderComp.Type = Catalog.MachineType.Blender;
             PrimitiveFactory.MachineVisual(blenderGO, "Blender");
+            blenderGO.AddComponent<MachineBadge>();
 
             var ovenGO = CreateAt("Oven", new Vector2(23, 14));
             var ovenComp = ovenGO.AddComponent<Machine>();
             ovenComp.Type = Catalog.MachineType.Oven;
             PrimitiveFactory.MachineVisual(ovenGO, "Oven");
+            ovenGO.AddComponent<MachineBadge>();
 
             var millGO = CreateAt("Mill", new Vector2(23, 18));
             var millComp = millGO.AddComponent<Machine>();
             millComp.Type = Catalog.MachineType.Mill;
             PrimitiveFactory.MachineVisual(millGO, "Mill");
+            millGO.AddComponent<MachineBadge>();
+
+            var dairyGO = CreateAt("Dairy", new Vector2(26, 11));
+            var dairyComp = dairyGO.AddComponent<Machine>();
+            dairyComp.Type = Catalog.MachineType.Dairy;
+            PrimitiveFactory.MachineVisual(dairyGO, "Dairy");
+            dairyGO.AddComponent<MachineBadge>();
 
             // ═══════════════════════════════════════════════════════════════════
             //  4. CASH COUNTERS (inside store, front area)
@@ -155,6 +168,8 @@ namespace MiniMart
                 new Vector2(5, 15),   // Wheat
                 new Vector2(9, 15),   // WheatFlour
                 new Vector2(13, 15),  // Bread
+                new Vector2(19, 12),  // Milk
+                new Vector2(19, 16),  // Cheese
             };
 
             foreach (Core.ItemType item in System.Enum.GetValues(typeof(Core.ItemType)))
@@ -187,6 +202,27 @@ namespace MiniMart
 
             var exitDoor = CreateAt("ExitDoor", new Vector2(28, 21));
             PrimitiveFactory.Door(exitDoor, false);
+
+            // Per-source storage racks (player feedback): each item's storage lives NEXT TO
+            // its source — egg by the coop, tomato/ketchup by the plants, wheat/flour by the
+            // wheat farm, milk/cheese by the cow, bread by the oven. The logical pool is
+            // still StoreInventory; racks are the physical access points with live badges.
+            StorageRack MakeRack(Core.ItemType item, Vector2 pos)
+            {
+                var go = CreateAt($"Rack_{item}", pos);
+                var rack = go.AddComponent<StorageRack>();
+                rack.Item = item;
+                rack.Build();
+                return rack;
+            }
+            var rackEgg     = MakeRack(Core.ItemType.Egg,           new Vector2(6f, 1.8f));
+            var rackTomato  = MakeRack(Core.ItemType.Tomato,        new Vector2(10f, 1.8f));
+            var rackKetchup = MakeRack(Core.ItemType.TomatoKetchup, new Vector2(14f, 1.8f));
+            var rackWheat   = MakeRack(Core.ItemType.Wheat,         new Vector2(18f, 1.8f));
+            var rackFlour   = MakeRack(Core.ItemType.WheatFlour,    new Vector2(22f, 1.8f));
+            var rackMilk    = MakeRack(Core.ItemType.Milk,          new Vector2(24.5f, 1.8f));
+            var rackCheese  = MakeRack(Core.ItemType.Cheese,        new Vector2(27.5f, 1.8f));
+            var rackBread   = MakeRack(Core.ItemType.Bread,         new Vector2(21f, 13f));
 
             var db1 = CreateAt("Dustbin1", new Vector2(17, 10));
             PrimitiveFactory.Dustbin(db1);
@@ -226,6 +262,19 @@ namespace MiniMart
             if (playerGO.GetComponent<UI.CarryVisual>() == null) playerGO.AddComponent<UI.CarryVisual>();
             if (playerGO.GetComponent<WobbleAnimator>() == null) playerGO.AddComponent<WobbleAnimator>();
 
+            // Proximity interactions: harvest / deposit / load machines / stock shelves.
+            var interact = playerGO.GetComponent<PlayerInteraction>() ?? playerGO.AddComponent<PlayerInteraction>();
+            interact.tomatoFarm = tomatoFarmComp;
+            interact.wheatFarm = wheatFarmComp;
+            interact.henCoop = henCoopComp;
+            interact.cowPen = cowPenComp;
+            interact.blender = blenderComp;
+            interact.oven = ovenComp;
+            interact.mill = millComp;
+            interact.dairy = dairyComp;
+            interact.shelves = shelvesList;
+            interact.bins = new List<Transform> { db1.transform, db2.transform };
+
             // Only add the built-in primitive visuals when there's no valid custom prefab —
             // otherwise they'd render doubled up alongside the prefab's own model.
             if (validPrefab == null)
@@ -247,6 +296,7 @@ namespace MiniMart
             shelver1Comp.Configure(Core.RoleType.Shelver1, null);
             shelver1Comp.AssignedShelves = shelvesList.ToArray();
             if (shelver1GO.GetComponent<WobbleAnimator>() == null) shelver1GO.AddComponent<WobbleAnimator>();
+            if (shelver1GO.GetComponent<UI.CarryVisual>() == null) shelver1GO.AddComponent<UI.CarryVisual>();
             PrimitiveFactory.BuildCharacter(shelver1GO, new Color(0.92f, 0.3f, 0.55f));
 
             // Shelver 2 — magenta
@@ -255,6 +305,7 @@ namespace MiniMart
             shelver2Comp.Configure(Core.RoleType.Shelver2, null);
             shelver2Comp.AssignedShelves = shelvesList.ToArray();
             if (shelver2GO.GetComponent<WobbleAnimator>() == null) shelver2GO.AddComponent<WobbleAnimator>();
+            if (shelver2GO.GetComponent<UI.CarryVisual>() == null) shelver2GO.AddComponent<UI.CarryVisual>();
             PrimitiveFactory.BuildCharacter(shelver2GO, new Color(0.85f, 0.2f, 0.85f));
 
             // Chef — white with chef hat
@@ -267,6 +318,7 @@ namespace MiniMart
             chefComp.oven = ovenComp;
             chefComp.mill = millComp;
             if (chefGO.GetComponent<WobbleAnimator>() == null) chefGO.AddComponent<WobbleAnimator>();
+            if (chefGO.GetComponent<UI.CarryVisual>() == null) chefGO.AddComponent<UI.CarryVisual>();
             PrimitiveFactory.BuildCharacter(chefGO, Color.white, true);
 
             // Farmer — green
@@ -275,7 +327,9 @@ namespace MiniMart
             farmerComp.tomatoFarm = tomatoFarmComp;
             farmerComp.wheatFarm = wheatFarmComp;
             farmerComp.henCoop = henCoopComp;
+            farmerComp.cowPen = cowPenComp;
             if (farmerGO.GetComponent<WobbleAnimator>() == null) farmerGO.AddComponent<WobbleAnimator>();
+            if (farmerGO.GetComponent<UI.CarryVisual>() == null) farmerGO.AddComponent<UI.CarryVisual>();
             PrimitiveFactory.BuildCharacter(farmerGO, new Color(0.3f, 0.75f, 0.35f));
 
             // ═══════════════════════════════════════════════════════════════════
@@ -296,9 +350,19 @@ namespace MiniMart
             theftComp.SpawnPoint = entryDoor.transform;
             theftComp.ExitWaypoint = exitDoor.transform;
             theftComp.AllShelves = shelvesList;
+            
+            // Van parks OUTSIDE on the grass below the entrance — it was parking at (2,7),
+            // i.e. inside the doorway/wall line ("van enters the mall" bug).
+            var vanSpawn = new GameObject("VanSpawnSpot");
+            vanSpawn.transform.position = new Vector3(-10, 0, 4.5f);
+
+            var vanPickup = new GameObject("VanPickupSpot");
+            vanPickup.transform.position = new Vector3(2.5f, 0, 4.5f);
 
             var pomGO = new GameObject("PhoneOrderManager");
             var pomComp = pomGO.AddComponent<PhoneOrderManager>();
+            pomComp.SpawnSpot = vanSpawn.transform;
+            pomComp.PickupSpot = vanPickup.transform;
 
             var gmGO = new GameObject("GameManager");
             var gmComp = gmGO.AddComponent<GameManager>();
@@ -317,11 +381,42 @@ namespace MiniMart
             gmComp.Blender = blenderComp;
             gmComp.Oven = ovenComp;
             gmComp.Mill = millComp;
+            gmComp.Dairy = dairyComp;
+            gmComp.CowPen = cowPenComp;
 
             // ═══════════════════════════════════════════════════════════════════
             //  10. HUD — built AFTER GameManager so HUDController.Awake can find it
             // ═══════════════════════════════════════════════════════════════════
             HUDBuilder.Build(playerInput);
+
+            // ═══════════════════════════════════════════════════════════════════
+            //  11. PROGRESSIVE EXPANSION (reference flow)
+            //  The lot starts nearly empty: tomato plot, tomato stand, counter 1,
+            //  storage depot. Everything else sits behind an arrow-marked purchase
+            //  pad the player walks onto to buy (cost drains while standing).
+            // ═══════════════════════════════════════════════════════════════════
+            ShopShelf ShelfOf(Core.ItemType t) => shelvesList.Find(s => s.Item == t);
+
+            void Gate(float cost, string label, params GameObject[] targets)
+            {
+                foreach (var t in targets)
+                    if (t != null) t.SetActive(false);
+                if (targets.Length > 0 && targets[0] != null)
+                    PurchasePad.Create(targets[0].transform.position, cost, label, targets);
+            }
+
+            Gate(15f,  "HIRE FARMER",    farmerGO);
+            Gate(25f,  "HEN COOP",       henCoopGO, ShelfOf(Core.ItemType.Egg)?.gameObject, rackEgg.gameObject);
+            Gate(40f,  "HIRE SHELVER A", shelver1GO);
+            Gate(50f,  "WHEAT FARM",     wheatFarmGO, ShelfOf(Core.ItemType.Wheat)?.gameObject, rackWheat.gameObject);
+            Gate(75f,  "BLENDER",        blenderGO, ShelfOf(Core.ItemType.TomatoKetchup)?.gameObject, rackKetchup.gameObject);
+            Gate(60f,  "HIRE SHELVER B", shelver2GO);
+            Gate(125f, "WHEAT MILL",     millGO, ShelfOf(Core.ItemType.WheatFlour)?.gameObject, rackFlour.gameObject);
+            Gate(150f, "HIRE CHEF",      chefGO);
+            Gate(100f, "COW PEN",        cowPenGO, ShelfOf(Core.ItemType.Milk)?.gameObject, rackMilk.gameObject);
+            Gate(175f, "DAIRY",          dairyGO, ShelfOf(Core.ItemType.Cheese)?.gameObject, rackCheese.gameObject);
+            Gate(200f, "BREAD OVEN",     ovenGO, ShelfOf(Core.ItemType.Bread)?.gameObject, rackBread.gameObject);
+            Gate(300f, "COUNTER 2",      cc2GO);
 
             Debug.Log("[SceneBootstrapper] Scene fully bootstrapped with My Mini Mall visuals.");
         }

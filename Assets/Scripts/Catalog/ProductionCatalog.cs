@@ -2,7 +2,7 @@ using MiniMart.Core;
 
 namespace MiniMart.Catalog
 {
-    public enum MachineType { Blender, Oven, Mill }
+    public enum MachineType { Blender, Oven, Mill, Dairy }
 
     /// <summary>
     /// Blender (ketchup), Oven (bread), Mill (wheat flour) and the hen coop all share the
@@ -23,6 +23,7 @@ namespace MiniMart.Catalog
         public static UpgradeCurve BlenderCurve() => SharedFourLevelCurve(new[] { 1.0f, 1.2f, 1.4f, 1.6f });
         public static UpgradeCurve OvenCurve() => SharedFourLevelCurve(new[] { 1.0f, 1.2f, 1.4f, 1.6f });
         public static UpgradeCurve MillCurve() => SharedFourLevelCurve(new[] { 1.0f, 1.2f, 1.4f, 1.6f });
+        public static UpgradeCurve DairyCurve() => SharedFourLevelCurve(new[] { 1.0f, 1.2f, 1.4f, 1.6f });
 
         /// <summary>Chickens: 2 total, same min4/max8 lvl1-4 shape, speed = lay-rate multiplier.</summary>
         public static UpgradeCurve HenCoopCurve() => SharedFourLevelCurve(new[] { 1.0f, 1.2f, 1.4f, 1.6f });
@@ -34,6 +35,7 @@ namespace MiniMart.Catalog
                 { MachineType.Blender, 2.0f },
                 { MachineType.Oven, 3.0f },
                 { MachineType.Mill, 1.5f },
+                { MachineType.Dairy, 2.5f },
             };
 
         public static readonly System.Collections.Generic.Dictionary<MachineType, ItemType> MachineOutput =
@@ -42,6 +44,7 @@ namespace MiniMart.Catalog
                 { MachineType.Blender, ItemType.TomatoKetchup },
                 { MachineType.Oven, ItemType.Bread },
                 { MachineType.Mill, ItemType.WheatFlour },
+                { MachineType.Dairy, ItemType.Cheese },
             };
 
         public static readonly System.Collections.Generic.Dictionary<MachineType, ItemType> MachineInput =
@@ -50,6 +53,7 @@ namespace MiniMart.Catalog
                 { MachineType.Blender, ItemType.Tomato },
                 { MachineType.Oven, ItemType.WheatFlour },
                 { MachineType.Mill, ItemType.Wheat },
+                { MachineType.Dairy, ItemType.Milk },
             };
     }
 }

@@ -25,6 +25,7 @@ namespace MiniMart.Production
                 MachineType.Blender => ProductionCatalog.BlenderCurve(),
                 MachineType.Oven => ProductionCatalog.OvenCurve(),
                 MachineType.Mill => ProductionCatalog.MillCurve(),
+                MachineType.Dairy => ProductionCatalog.DairyCurve(),
                 _ => ProductionCatalog.BlenderCurve(),
             };
             ApplyLevel(1);
@@ -80,6 +81,10 @@ namespace MiniMart.Production
         {
             InitializeIfNeeded();
             if (InputQueued <= 0) return;
+
+            // Output tray full: stall processing instead of consuming input and silently
+            // DESTROYING the product (OutputReady was clamped, losing one item per cycle).
+            if (OutputReady >= StackCapacity) return;
 
             float baseSeconds = ProductionCatalog.BaseProcessSeconds[Type];
             float secondsPerUnit = baseSeconds / step.speedMultiplier;
