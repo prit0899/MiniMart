@@ -19,6 +19,7 @@ namespace MiniMart.Engine
         public float TimeRemaining;
         public bool IsExpired => TimeRemaining <= 0f;
         public bool IsFulfilled;
+        public bool IsDismissed;
 
         public float TotalFulfillmentValue(EconomyManager economy)
         {
@@ -54,9 +55,16 @@ namespace MiniMart.Engine
 
         private void ScheduleNext()
         {
-            nextSpawnTime = Random.Range(
-                PriceCatalog.PhoneOrderMinIntervalMin * 60f,
-                PriceCatalog.PhoneOrderMaxIntervalMin * 60f);
+            if (orderCounter == 0)
+            {
+                nextSpawnTime = 15f; // First order arrives quickly so players know the feature exists
+            }
+            else
+            {
+                nextSpawnTime = Random.Range(
+                    PriceCatalog.PhoneOrderMinIntervalMin * 60f,
+                    PriceCatalog.PhoneOrderMaxIntervalMin * 60f);
+            }
             spawnTimer = 0f;
         }
 
@@ -131,8 +139,13 @@ namespace MiniMart.Engine
                 retailTotal += unit * qty;
             }
 
-            // Premium payout scaled by order size, clamped to the GDD range.
-            order.Value = Mathf.Clamp(45f + retailTotal * 60f, 45f, 300f);
+            // Premium payout scaled by order size AND store level. The GDD range
+            // ($45-300) only fully opens up by L5 — the first order used to fire
+            // at t=15s worth up to $300 against $10 starting cash, a jackpot
+            // that trivialized the whole early game (batch-34 playthrough).
+            float levelMin = Mathf.Min(PriceCatalog.PhoneOrderMin, 15f * playerLevel);          // L1:$15, L2:$30, L3+:$45
+            float levelMax = Mathf.Min(PriceCatalog.PhoneOrderMax, 60f * playerLevel);          // L1:$60 ... L5+:$300
+            order.Value = Mathf.Clamp(levelMin + retailTotal * 60f, levelMin, levelMax);
             ActiveOrders.Add(order);
             
             if (SpawnSpot != null && PickupSpot != null)
@@ -152,6 +165,7 @@ namespace MiniMart.Engine
         public void Dismiss(PhoneOrder order)
         {
             if (order == null) return;
+            order.IsDismissed = true;
             ActiveOrders.Remove(order);
             Debug.Log($"Phone order {order.Id} dismissed.");
         }

@@ -25,16 +25,34 @@ namespace MiniMart.Characters
         public WheatFarm wheatFarm;
         public HenCoop henCoop;
         public CowPen cowPen;
-        public Machine blender;
+        public HerbPatch herbPatch;
+        public CornField cornField;
+        public AppleOrchard appleOrchard;
+        public Machine tomatoCanner;
         public Machine oven;
-        public Machine mill;
-        public Machine dairy;
+        public Machine doughMixer;
+        public Machine milkBottler;
+        public Machine cornProcessor;
+        public Machine cookieLine;
+        public HayFeedTrough hayFeedTrough;
         public List<ShopShelf> shelves = new List<ShopShelf>();
         public List<Transform> bins = new List<Transform>();
 
         private PlayerController player;
         private readonly Dictionary<ItemType, int> carried = new Dictionary<ItemType, int>();
         private float timer;
+        private float binDwell; // time spent standing at a dustbin (prevents walk-by dumps)
+
+        /// <summary>Exact per-item carried list for mixed-stack visuals. Not an override —
+        /// PlayerInteraction is a sibling MonoBehaviour, not a CharacterBase; CarryVisual
+        /// calls this directly via GetComponent&lt;PlayerInteraction&gt;().</summary>
+        public System.Collections.Generic.List<ItemType> GetCarriedItems()
+        {
+            var list = new System.Collections.Generic.List<ItemType>();
+            foreach (var kv in carried)
+                for (int i = 0; i < kv.Value; i++) list.Add(kv.Key);
+            return list;
+        }
 
         private void Awake() => player = GetComponent<PlayerController>();
 
@@ -61,6 +79,23 @@ namespace MiniMart.Characters
                 { Pick(ItemType.Wheat, wheatFarm.Harvest(1)); return; }
                 if (Near(cowPen, Radius) && cowPen.TotalMilkReady() > 0)
                 { Pick(ItemType.Milk, cowPen.Collect(1)); return; }
+                if (Near(herbPatch, Radius) && herbPatch.TotalRipe() > 0)
+                { Pick(ItemType.Herb, herbPatch.Harvest(1)); return; }
+                if (Near(cornField, Radius) && cornField.TotalRipe() > 0)
+                { Pick(ItemType.Corn, cornField.Harvest(1)); return; }
+                if (Near(appleOrchard, Radius) && appleOrchard.TotalRipe() > 0)
+                { Pick(ItemType.Apple, appleOrchard.Harvest(1)); return; }
+            }
+
+            // 1b) Feed the cow: stand at the Hay Feed Trough with wheat to
+            //     top it up. Trough consumes wheat over time to speed milk.
+            if (hayFeedTrough != null && Near(hayFeedTrough, Radius))
+            {
+                if (CarriedCount(ItemType.Wheat) > 0)
+                {
+                    int fit = hayFeedTrough.AddHay(1);
+                    if (fit > 0) { Consume(ItemType.Wheat, fit); return; }
+                }
             }
 
             // 2) Deposit carried items at their per-source storage racks
@@ -79,53 +114,79 @@ namespace MiniMart.Characters
                     }
                 }
 
-                // 2b) Bins: stand at a dustbin to throw away everything you carry
-                //     ("dismantle" — previously there was no way to release items).
+                // 2b) Bins: DELIBERATELY stand at a dustbin to throw items away, a couple
+                //     per beat. A dwell timer + tight radius stops the old bug where merely
+                //     walking past a bin instantly trashed a full MAX stack.
+                bool atBin = false;
                 foreach (var bin in bins)
                 {
-                    if (bin == null || Vector3.Distance(transform.position, bin.position) > Radius) continue;
-                    carried.Clear();
-                    player.DropAll();
-                    Engine.Emote.Spawn(transform.position, "x", new Color(0.7f, 0.7f, 0.7f));
-                    return;
+                    if (bin == null || Vector3.Distance(transform.position, bin.position) > 1.2f) continue;
+                    atBin = true;
+                    binDwell += ActionInterval;
+                    if (binDwell < 0.9f) break; // must linger before dumping starts
+                    foreach (var key in new List<ItemType>(carried.Keys))
+                    {
+                        if (carried[key] <= 0) continue;
+                        Consume(key, Mathf.Min(carried[key], 2));
+                        Engine.Emote.Spawn(transform.position, "x", new Color(0.7f, 0.7f, 0.7f));
+                        break; // one item type per beat
+                    }
+                    break;
                 }
+                if (!atBin) binDwell = 0f;
+                if (atBin && binDwell >= 0.9f) return;
             }
 
             // 3) Machines: load carried inputs, collect finished outputs.
-            if (Near(blender, Radius))
+            if (Near(tomatoCanner, Radius))
             {
-                if (CarriedCount(ItemType.Tomato) > 0 && blender.InputQueued < blender.StackCapacity)
-                { MoveToMachine(blender, ItemType.Tomato, 1); return; }
-                if (blender.OutputReady > 0 && room > 0)
-                { Pick(ItemType.TomatoKetchup, blender.CollectFinished()); return; }
+                if (CarriedCount(ItemType.Tomato) > 0 && tomatoCanner.InputQueued < tomatoCanner.StackCapacity)
+                { MoveToMachine(tomatoCanner, ItemType.Tomato, 1); return; }
+                if (tomatoCanner.OutputReady > 0 && room > 0)
+                { Pick(ItemType.CannedTomato, tomatoCanner.CollectFinished()); return; }
             }
-            if (Near(mill, Radius))
+            if (Near(doughMixer, Radius))
             {
-                if (CarriedCount(ItemType.Wheat) > 0 && mill.InputQueued < mill.StackCapacity)
-                { MoveToMachine(mill, ItemType.Wheat, 1); return; }
-                if (mill.OutputReady > 0 && room > 0)
-                { Pick(ItemType.WheatFlour, mill.CollectFinished()); return; }
+                if (CarriedCount(ItemType.Wheat) > 0 && doughMixer.InputQueued < doughMixer.StackCapacity)
+                { MoveToMachine(doughMixer, ItemType.Wheat, 1); return; }
+                if (doughMixer.OutputReady > 0 && room > 0)
+                { Pick(ItemType.Dough, doughMixer.CollectFinished()); return; }
             }
-            if (Near(dairy, Radius))
+            if (Near(milkBottler, Radius))
             {
-                if (CarriedCount(ItemType.Milk) > 0 && dairy.InputQueued < dairy.StackCapacity)
-                { MoveToMachine(dairy, ItemType.Milk, 1); return; }
-                if (dairy.OutputReady > 0 && room > 0)
-                { Pick(ItemType.Cheese, dairy.CollectFinished()); return; }
+                if (CarriedCount(ItemType.Milk) > 0 && milkBottler.InputQueued < milkBottler.StackCapacity)
+                { MoveToMachine(milkBottler, ItemType.Milk, 1); return; }
+                if (milkBottler.OutputReady > 0 && room > 0)
+                { Pick(ItemType.BottledMilk, milkBottler.CollectFinished()); return; }
             }
             if (Near(oven, Radius))
             {
-                // Bread needs a flour + egg pair per unit.
-                if (CarriedCount(ItemType.WheatFlour) > 0 && CarriedCount(ItemType.Egg) > 0
-                    && oven.InputQueued < oven.StackCapacity)
-                {
-                    oven.LoadInput(1);
-                    Consume(ItemType.WheatFlour, 1);
-                    Consume(ItemType.Egg, 1);
-                    return;
-                }
+                // Oven takes Dough -> Bread
+                if (CarriedCount(ItemType.Dough) > 0 && oven.InputQueued < oven.StackCapacity)
+                { MoveToMachine(oven, ItemType.Dough, 1); return; }
                 if (oven.OutputReady > 0 && room > 0)
                 { Pick(ItemType.Bread, oven.CollectFinished()); return; }
+            }
+            if (Near(cornProcessor, Radius))
+            {
+                if (CarriedCount(ItemType.Corn) > 0 && cornProcessor.InputQueued < cornProcessor.StackCapacity)
+                { MoveToMachine(cornProcessor, ItemType.Corn, 1); return; }
+                if (cornProcessor.OutputReady > 0 && room > 0)
+                { Pick(ItemType.ProcessedCorn, cornProcessor.CollectFinished()); return; }
+            }
+            if (Near(cookieLine, Radius))
+            {
+                // Cookies need Wheat + Milk per unit
+                if (CarriedCount(ItemType.Wheat) > 0 && CarriedCount(ItemType.Milk) > 0
+                    && cookieLine.InputQueued < cookieLine.StackCapacity)
+                {
+                    cookieLine.LoadInput(1);
+                    Consume(ItemType.Wheat, 1);
+                    Consume(ItemType.Milk, 1);
+                    return;
+                }
+                if (cookieLine.OutputReady > 0 && room > 0)
+                { Pick(ItemType.Cookie, cookieLine.CollectFinished()); return; }
             }
 
             // 4) Stock the shelf we're standing at with matching carried items.
@@ -142,9 +203,8 @@ namespace MiniMart.Characters
                     return;
                 }
             }
-
             // 5) Load delivery vans for phone orders
-            var vans = FindObjectsByType<DeliveryVan>(FindObjectsSortMode.None);
+            var vans = FindObjectsByType<DeliveryVan>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             foreach (var van in vans)
             {
                 if (!Near(van, Radius * 1.5f)) continue; // generous radius for vans

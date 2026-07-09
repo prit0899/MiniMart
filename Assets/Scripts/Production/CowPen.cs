@@ -62,10 +62,15 @@ namespace MiniMart.Production
             return true;
         }
 
+        [System.NonSerialized] public HayFeedTrough FedBy;
+
         private void Update()
         {
             InitializeIfNeeded();
-            foreach (var c in cows) c.Tick(Time.deltaTime);
+            // Boost tick when a linked hay trough is currently fed (spec §Livestock West).
+            float dt = Time.deltaTime;
+            if (FedBy != null && FedBy.IsFed) dt *= FedBy.FedSpeedBoost;
+            foreach (var c in cows) c.Tick(dt);
         }
 
         public int TotalMilkReady()

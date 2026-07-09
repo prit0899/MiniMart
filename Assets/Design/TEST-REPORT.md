@@ -1,4 +1,45 @@
-# Logic Test Report — 2026-07-05
+# Runtime Verification — 2026-07-05 (session 2, via Unity MCP in the live editor)
+
+This pass ran the ACTUAL game in the Unity editor (not a Python mirror), driving it with
+deterministic frame-stepping (`EditorApplication.Step`) because MCP-headless play mode does
+not auto-pump frames. Every result below is from the real compiled game.
+
+## Compile & logic
+- **0 compile errors** after fixing 3 (below).
+- **`DataValidator`: 42,271 assertions passed, 0 failed** — the in-editor suite covering catalogs,
+  curves, economy, storage, machines, farms, save round-trip, phone orders, and permutation fuzz.
+
+## Core loop driven end-to-end in the running game (all ✓)
+- Harvest via player proximity (tomato farm → carry stack)
+- Deposit at the item's storage rack → StoreInventory
+- Stock a shelf directly from carry
+- Buyer spawns, shops the shelf, queues, checks out at the manned counter
+- Money stack spawns and is collected when the player is present → cash rises
+- Purchase pad drains the exact cost ($15 farmer) and activates its target
+- Farmer autonomy: harvests + deposits with no player input
+- Shelver autonomy: two-leg rack→shelf restock
+- Blender processes tomato→ketchup (4 in → 4 out); player auto-collects machine output
+- Van parks OUTSIDE the store (z=4.5, below the south wall); bins wired; counter 2 gated; fresh cash $10
+
+## Bugs found and fixed this session
+1. **3 compile errors** — `MiniMart.Catalog.ItemType` should be `Core.ItemType` in CharacterBase &
+   CarryVisual; and `PlayerInteraction.GetCarriedItems()` was marked `override` but the class is a
+   sibling MonoBehaviour, not a `CharacterBase` — changed to a plain public method.
+2. **StorageRack registered under the wrong item** — `OnEnable` fired during `AddComponent`, before
+   `Item` was assigned, so every rack registered as `Egg` and `Get(Tomato)` returned null (workers/
+   player couldn't find racks). Fixed: bootstrapper builds the rack GameObject inactive, sets `Item`,
+   then activates (so `OnEnable` sees the correct item); added a `[RuntimeInitializeOnLoadMethod]`
+   registry reset for domain-reload-off safety.
+3. **Debug starting cash $2000** reverted to the intended **$10** (reference-style: sell first, then buy).
+
+## Known non-bugs (verified as intended)
+- Farm "not growing" / "0 buyers" when driven purely via MCP = play mode not pumping frames, not a
+  game bug (confirmed: stepping frames grows the farm to full and spawns buyers).
+- Player standing next to a machine shows 0 output = the player is auto-collecting it (correct).
+
+---
+
+# Logic Test Report — 2026-07-05 (session 1, Python mirror)
 **Method:** no C# compiler is available on this machine and the open editor locks Unity batch mode,
 so the game's rules were mirrored line-by-line into a Python simulation
 (`scratchpad/minimart_sim.py`) and exercised by `test_minimart.py`. The mirror first reproduced

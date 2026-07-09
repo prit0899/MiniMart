@@ -53,11 +53,39 @@ namespace MiniMart.Map
                         0f,
                         GridOrigin.z + y * CellSize + CellSize * 0.5f);
 
+        /// <summary>True when the world position sits on a walkable cell.</summary>
+        public bool IsWalkableWorld(Vector3 world)
+        {
+            var c = WorldToCell(world);
+            return InBounds(c.x, c.y) && walkable[c.x, c.y];
+        }
+
+        /// <summary>Nearest walkable cell to the given one within a small search radius,
+        /// or the input when nothing better exists. Lets characters path TO things that
+        /// sit against a wall (racks, doors, counters) instead of failing outright.</summary>
+        private Vector2Int NearestWalkable(Vector2Int cell, int maxRadius = 3)
+        {
+            if (InBounds(cell.x, cell.y) && walkable[cell.x, cell.y]) return cell;
+            for (int r = 1; r <= maxRadius; r++)
+            {
+                for (int dx = -r; dx <= r; dx++)
+                {
+                    for (int dy = -r; dy <= r; dy++)
+                    {
+                        if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy)) != r) continue; // ring only
+                        int nx = cell.x + dx, ny = cell.y + dy;
+                        if (InBounds(nx, ny) && walkable[nx, ny]) return new Vector2Int(nx, ny);
+                    }
+                }
+            }
+            return cell;
+        }
+
         /// <summary>Returns a list of world-space waypoints from start to goal, or empty list if no path.</summary>
         public List<Vector3> FindPath(Vector3 startWorld, Vector3 goalWorld)
         {
-            var start = WorldToCell(startWorld);
-            var goal  = WorldToCell(goalWorld);
+            var start = NearestWalkable(WorldToCell(startWorld));
+            var goal  = NearestWalkable(WorldToCell(goalWorld));
             if (!InBounds(goal.x, goal.y) || !walkable[goal.x, goal.y]) return new List<Vector3>();
 
             var open   = new List<AStarNode>();

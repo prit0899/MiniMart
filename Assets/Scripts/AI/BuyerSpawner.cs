@@ -88,7 +88,11 @@ namespace MiniMart.AI
                 go.AddComponent<Engine.WobbleAnimator>();
                 go.AddComponent<MiniMart.UI.CarryVisual>();
                 // Same body/head/eyes build as every other character — no more bare capsules.
-                Engine.PrimitiveFactory.BuildCharacter(go, BuyerPalette[Random.Range(0, BuyerPalette.Length)]);
+                // Shopper variant: color-hashed hair (brown/black/blonde) + a little
+                // handbag on the side so shoppers read as distinct people, not clones.
+                Engine.PrimitiveFactory.BuildCharacter(go,
+                    BuyerPalette[Random.Range(0, BuyerPalette.Length)],
+                    Engine.PrimitiveFactory.CharacterRole.Shopper);
             }
             var buyer = go.GetComponent<Buyer>();
             buyer?.Init(currentPlayerLevel, AllShelves, Counters);

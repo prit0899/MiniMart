@@ -49,6 +49,8 @@ namespace MiniMart.AI
         private ShopShelf pickingShelf;
         private float pickBeat;
         private bool waitingForCounter; // arrived at the tills but none is open yet
+        private float shopWait;         // time spent waiting for an out-of-stock item to restock
+        private float shopPatienceSeconds;
 
         public void Init(int currentPlayerLevel, List<ShopShelf> shelves, List<Economy.CashCounter> cashCounters)
         {
@@ -73,6 +75,9 @@ namespace MiniMart.AI
                 case Personality.Bargain:   speedMultiplier = 0.90f; queuePatienceSeconds = 45f; break;
                 default:                    speedMultiplier = 1.10f; queuePatienceSeconds = 25f; break;
             }
+            // Buyers are more patient waiting for the store to restock than they are
+            // standing in a checkout queue (reference: they linger for their items).
+            shopPatienceSeconds = queuePatienceSeconds * 2.5f;
 
             GenerateBasket();
             OriginalWant.Clear();
@@ -202,6 +207,7 @@ namespace MiniMart.AI
                     Collected[it] += 1;
                     TryPickUp(1);
                     CarryColor = Engine.PrimitiveFactory.ItemColor(it);
+                    shopWait = 0f; // made progress — reset the restock-wait budget
                 }
                 else
                 {
@@ -212,32 +218,65 @@ namespace MiniMart.AI
 
             if (!headingToCounter)
             {
-                // Find next shelf item we still need.
+                // Find the next item we still want.
                 ItemType needed = FindNextNeededItem();
-                if (Basket.ContainsKey(needed)) // re-check validity
+                bool stillWants = Basket.TryGetValue(needed, out int needCount) && needCount > 0;
+
+                if (stillWants)
                 {
-                    ShopShelf shelf = FindShelfFor(needed);
-                    if (shelf != null && shelf.Count > 0)
+                    ShopShelf shelf = FindShelfFor(needed); // a shelf that currently has stock
+                    if (shelf != null)
                     {
+                        shopWait = 0f;
                         currentTarget = shelf;
                         SetTarget(shelf.transform.position);
                         return;
                     }
+
+                    // The item's shelf exists but is empty. Reference behaviour: WAIT in the
+                    // store for a restock instead of leaving. Linger and re-check each tick,
+                    // up to a patience budget; a Shelver or the player may refill it.
+                    if (HasActiveShelf(needed))
+                    {
+                        if (!shownSoldOut)
+                        {
+                            shownSoldOut = true;
+                            Engine.Emote.SoldOut(transform.position);
+                        }
+                        shopWait += dt;
+                        if (shopWait < shopPatienceSeconds)
+                            return; // keep waiting near the shelf
+                        // Waited long enough — give up on the remaining items.
+                    }
                 }
 
-                // Nothing left to pick — if wishes remain unfulfilled, show "sold out" confusion.
-                if (Basket.Count > 0 && !shownSoldOut)
+                // Done shopping (basket satisfied, or gave up waiting).
+                if (Collected.Count == 0)
                 {
-                    shownSoldOut = true;
-                    Engine.Emote.SoldOut(transform.position);
+                    // Never found anything — leave without occupying a till.
+                    LeaveWithoutPaying("found nothing in stock");
+                    return;
                 }
 
-                // Head to nearest open counter.
+                // Head to nearest open counter with what we collected.
                 var counter = FindUnlockedCounter();
                 if (counter != null)
                 {
                     headingToCounter = true;
-                    SetTarget(counter.transform.position);
+                    counter.Enqueue(this);
+                    queuedCounter = counter;
+
+                    int idx = counter.Line.IndexOf(this);
+                    if (idx >= 0)
+                    {
+                        Vector3 slot = counter.GetQueueSlot(idx);
+                        SetTarget(slot);
+                    }
+                }
+                else
+                {
+                    waitingForCounter = true;
+                    queueWait = 0f;
                 }
             }
         }
@@ -252,24 +291,8 @@ namespace MiniMart.AI
 
             if (headingToCounter)
             {
-                var counter = FindUnlockedCounter();
-                if (counter != null)
-                {
-                    counter.Enqueue(this);
-                    queuedCounter = counter;
-                    
-                    int idx = counter.Line.IndexOf(this);
-                    if (idx >= 0)
-                    {
-                        Vector3 slot = counter.GetQueueSlot(idx);
-                        SetTarget(slot);
-                    }
-                }
-                else
-                {
-                    waitingForCounter = true; // handled (with patience) in Tick
-                }
-                queueWait = 0f;
+                // We've arrived at our queue slot. We don't need to do anything here,
+                // the Tick() method handles shuffling forward as the line moves.
                 return;
             }
 

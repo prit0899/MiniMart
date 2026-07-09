@@ -13,11 +13,26 @@ namespace MiniMart.Characters
     public abstract class CharacterBase : MonoBehaviour
     {
         public RoleType Role;
-        public int Level = 1;
+
+        // Reference has SEPARATE "Stack" and "Speed" upgrade tracks per entity —
+        // "Stack – Lvl.3" and "Speed – Lvl.5" show as two independent rows in
+        // the Upgrades panel. Previously we had one combined `Level` that drove
+        // both, so a Speed L5 shelver was FORCED to also be Stack L5. Split them:
+        //   • StackLevel drives CarryCapacity via curve.stackCapacity
+        //   • SpeedLevel drives speedMultiplier via curve.speedMultiplier
+        // `Level` is kept as max(Stack,Speed) for legacy call sites (unlocks,
+        // save/load fallback) — new code should read the split fields directly.
+        public int StackLevel = 1;
+        public int SpeedLevel = 1;
+        public int Level => Mathf.Max(StackLevel, SpeedLevel);
+
         public int CarryCapacity;
         public int CarryCount;
         public Color CarryColor = Color.white;
         public CharacterState State = CharacterState.Idle;
+
+        /// <summary>Returns exactly what is being carried for mixed-stack visuals.</summary>
+        public virtual System.Collections.Generic.List<Core.ItemType> GetCarriedItems() => new System.Collections.Generic.List<Core.ItemType>();
 
         [Header("Movement")]
         public float baseSpeed = 2.0f;          // world units / second at multiplier 1.0
@@ -34,24 +49,59 @@ namespace MiniMart.Characters
 
         protected virtual void Awake()
         {
-            ApplyLevel(Level);
+            ApplyLevel(1);
         }
 
-        /// <summary>Re-reads capacity/speed from the upgrade curve for the given level.</summary>
+        /// <summary>Legacy path: sets BOTH tracks to the same level (used by save/load
+        /// fallback for pre-split saves and by SceneBootstrapper before Configure()).</summary>
         public virtual void ApplyLevel(int level)
         {
             if (Curve == null) return;
-            Level = Mathf.Clamp(level, 1, Curve.MaxLevel);
-            var step = Curve.GetStep(Level);
-            CarryCapacity = step.stackCapacity;
-            speedMultiplier = step.speedMultiplier;
+            int clamped = Mathf.Clamp(level, 1, Curve.MaxLevel);
+            ApplyStackLevel(clamped);
+            ApplySpeedLevel(clamped);
         }
 
+        public virtual void ApplyStackLevel(int level)
+        {
+            if (Curve == null) return;
+            StackLevel = Mathf.Clamp(level, 1, Curve.MaxLevel);
+            CarryCapacity = Curve.GetStep(StackLevel).stackCapacity;
+        }
+
+        public virtual void ApplySpeedLevel(int level)
+        {
+            if (Curve == null) return;
+            SpeedLevel = Mathf.Clamp(level, 1, Curve.MaxLevel);
+            speedMultiplier = Curve.GetStep(SpeedLevel).speedMultiplier;
+        }
+
+        /// <summary>Legacy combined-upgrade path — bumps both tracks. Prefer the
+        /// track-specific TryUpgradeStack/TryUpgradeSpeed for reference-parity UI.</summary>
         public bool TryUpgrade(out int cost)
         {
             cost = Curve?.CostForNextLevel(Level) ?? -1;
             if (cost < 0) return false;
             ApplyLevel(Level + 1);
+            return true;
+        }
+
+        public int NextStackCost => Curve?.CostForNextLevel(StackLevel) ?? -1;
+        public int NextSpeedCost => Curve?.CostForNextLevel(SpeedLevel) ?? -1;
+
+        public bool TryUpgradeStack(out int cost)
+        {
+            cost = NextStackCost;
+            if (cost < 0) return false;
+            ApplyStackLevel(StackLevel + 1);
+            return true;
+        }
+
+        public bool TryUpgradeSpeed(out int cost)
+        {
+            cost = NextSpeedCost;
+            if (cost < 0) return false;
+            ApplySpeedLevel(SpeedLevel + 1);
             return true;
         }
 

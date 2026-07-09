@@ -120,7 +120,8 @@ namespace MiniMart.Characters
 
         private TextMesh badge;
         private int lastShown = -1;
-        
+        private GameObject restockArrow;
+
         private GameObject[] itemVisuals;
 
         private void Start()
@@ -142,7 +143,34 @@ namespace MiniMart.Characters
                 if (mr != null) mr.material = font.material;
             }
             go.AddComponent<Billboard>();
-            
+
+            // Reference-style "restock this shelf" indicator: a small downward-pointing
+            // yellow arrow that floats above the shelf when it needs stocking. Hidden
+            // until Update() decides Count is low.
+            restockArrow = new GameObject("RestockArrow");
+            restockArrow.transform.SetParent(transform, false);
+            restockArrow.transform.localPosition = new Vector3(0f, 2.85f, 0f);
+            var arrowYellow = new Color(1.0f, 0.86f, 0.20f);
+            // Shaft (thin vertical bar) + head (downward cone). Cone in Unity is the
+            // top half of a cylinder scaled to a point — approximate with a small
+            // pyramid built from a rotated tetrahedron-ish cube stack.
+            var shaft = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            shaft.transform.SetParent(restockArrow.transform, false);
+            shaft.transform.localPosition = new Vector3(0f, 0.28f, 0f);
+            shaft.transform.localScale = new Vector3(0.18f, 0.52f, 0.18f);
+            Destroy(shaft.GetComponent<Collider>());
+            shaft.GetComponent<MeshRenderer>().material =
+                Engine.PrimitiveFactory.NewColoredMaterial(arrowYellow);
+            var head = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            head.transform.SetParent(restockArrow.transform, false);
+            head.transform.localPosition = new Vector3(0f, -0.02f, 0f);
+            head.transform.localRotation = Quaternion.Euler(0f, 45f, 45f);
+            head.transform.localScale = new Vector3(0.30f, 0.30f, 0.30f);
+            Destroy(head.GetComponent<Collider>());
+            head.GetComponent<MeshRenderer>().material =
+                Engine.PrimitiveFactory.NewColoredMaterial(arrowYellow);
+            restockArrow.SetActive(false);
+
             // Visuals
             itemVisuals = new GameObject[Capacity];
             Color itemCol = Engine.PrimitiveFactory.ItemColor(Item);
@@ -168,12 +196,31 @@ namespace MiniMart.Characters
             if (badge != null && Count != lastShown)
             {
                 lastShown = Count;
-                badge.text = $"{Count}/{Capacity}";
-                
+                // Reference: shelves only show a badge when empty or full.
+                // Idle-partial stays quiet so the store reads as calm & clean.
+                // Reference shows persistent "n/m" fractional badges on shelves —
+                // MAX only replaces the number when Count == Capacity.
+                if (Count >= Capacity) badge.text = "MAX";
+                else                   badge.text = Count + "/" + Capacity;
+                badge.gameObject.SetActive(true);
+
                 for (int i = 0; i < itemVisuals.Length; i++)
-                {
                     itemVisuals[i].SetActive(i < Count);
-                }
+            }
+            // Reference: yellow "please restock" arrow when shelf is under a third full.
+            // Kept outside the change-guard so Start()'s late arrow creation still gets
+            // its initial visibility on the next tick.
+            if (restockArrow != null)
+            {
+                bool wantsArrow = Count <= Mathf.Max(1, Capacity / 3);
+                if (restockArrow.activeSelf != wantsArrow) restockArrow.SetActive(wantsArrow);
+            }
+            // Gentle bob so the arrow reads as an active indicator, not a decal.
+            if (restockArrow != null && restockArrow.activeSelf)
+            {
+                float y = 2.85f + Mathf.Sin(Time.time * 3.5f) * 0.08f;
+                var p = restockArrow.transform.localPosition;
+                restockArrow.transform.localPosition = new Vector3(p.x, y, p.z);
             }
         }
 

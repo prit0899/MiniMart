@@ -7,19 +7,22 @@ using MiniMart.Runtime;
 namespace MiniMart.Characters
 {
     /// <summary>
-    /// Makes ketchup (from tomato) and bread (from wheat flour). Per spec, the chef takes
-    /// tomato and eggs directly from the farm "by self", and takes wheat from the farm too
-    /// (wheat is then milled into flour before becoming bread). Chef ceiling is enforced to be
-    /// >= shelver ceiling via RoleCatalog.ChefCurve.
+    /// Makes ketchup (from tomato), bread (from wheat flour+egg), fried egg (from egg via stove),
+    /// and herb pack (from herb via leaf processor). Per spec, the chef takes tomato and eggs
+    /// directly from the farm "by self". Chef ceiling is enforced to be >= shelver ceiling.
+    /// Bug #4 fix: Stove and LeafProcessor are now wired to Chef so FriedEgg and HerbPack can
+    /// be produced automatically by an NPC (previously they were only manually operable).
     /// </summary>
     public class Chef : CharacterBase
     {
         public TomatoFarm tomatoFarm;
         public WheatFarm wheatFarm;
         public HenCoop henCoop;
-        public Machine blender; // ketchup
-        public Machine oven;    // bread
-        public Machine mill;    // flour
+        public Machine blender;       // tomato -> ketchup
+        public Machine oven;          // flour+egg -> bread
+        public Machine mill;          // wheat -> flour
+        public Machine stove;         // egg -> fried egg (Bug #4)
+        public Machine leafProcessor; // herb -> herb pack (Bug #4)
         private StoreInventory inventory;
 
         private enum ChefState
@@ -36,7 +39,14 @@ namespace MiniMart.Characters
             GoingToOvenToCollect,
             GoingToDeposit,
             GoingToSelfFetchTomato,
-            GoingToSelfFetchWheat
+            GoingToSelfFetchWheat,
+            // Bug #4 additions:
+            GoingToWithdrawEggForStove,
+            GoingToStoveToLoad,
+            GoingToStoveToCollect,
+            GoingToWithdrawHerbForLeaf,
+            GoingToLeafToLoad,
+            GoingToLeafToCollect,
         }
 
         private ChefState cState = ChefState.Deciding;
@@ -46,6 +56,9 @@ namespace MiniMart.Characters
         private int flourCount = 0;
         private int ketchupCount = 0;
         private int breadCount = 0;
+        private int herbCount = 0;           // Bug #4
+        private int friedEggCount = 0;       // Bug #4
+        private int herbPackCount = 0;       // Bug #4
 
         public void Configure(StoreInventory storeInventory)
         {
@@ -66,6 +79,9 @@ namespace MiniMart.Characters
                 else if (item == ItemType.WheatFlour) flourCount += amount;
                 else if (item == ItemType.TomatoKetchup) ketchupCount += amount;
                 else if (item == ItemType.Bread) breadCount += amount;
+                else if (item == ItemType.Herb) herbCount += amount;         // Bug #4
+                else if (item == ItemType.FriedEgg) friedEggCount += amount; // Bug #4
+                else if (item == ItemType.HerbPack) herbPackCount += amount;  // Bug #4
                 return true;
             }
             return false;
@@ -80,6 +96,9 @@ namespace MiniMart.Characters
             flourCount = 0;
             ketchupCount = 0;
             breadCount = 0;
+            herbCount = 0;      // Bug #4
+            friedEggCount = 0;  // Bug #4
+            herbPackCount = 0;  // Bug #4
         }
 
         /// <summary>Self-fetch tomato directly from the farm (bypasses shelver/storage hand-off).</summary>
@@ -122,12 +141,15 @@ namespace MiniMart.Characters
         /// <summary>Rack of the primary output we're carrying (racks sit by their sources).</summary>
         private Vector3 DepositPos()
         {
-            if (ketchupCount > 0) return RackPos(ItemType.TomatoKetchup);
-            if (breadCount > 0) return RackPos(ItemType.Bread);
-            if (flourCount > 0) return RackPos(ItemType.WheatFlour);
-            if (wheatCount > 0) return RackPos(ItemType.Wheat);
-            if (tomatoCount > 0) return RackPos(ItemType.Tomato);
-            if (eggCount > 0) return RackPos(ItemType.Egg);
+            if (ketchupCount > 0)  return RackPos(ItemType.TomatoKetchup);
+            if (breadCount > 0)    return RackPos(ItemType.Bread);
+            if (herbPackCount > 0) return RackPos(ItemType.HerbPack);   // Bug #4
+            if (friedEggCount > 0) return RackPos(ItemType.FriedEgg);   // Bug #4
+            if (flourCount > 0)    return RackPos(ItemType.WheatFlour);
+            if (wheatCount > 0)    return RackPos(ItemType.Wheat);
+            if (tomatoCount > 0)   return RackPos(ItemType.Tomato);
+            if (herbCount > 0)     return RackPos(ItemType.Herb);        // Bug #4
+            if (eggCount > 0)      return RackPos(ItemType.Egg);
             return RackPos(ItemType.Tomato);
         }
 
@@ -166,10 +188,23 @@ namespace MiniMart.Characters
                             SetTarget(oven.transform.position);
                             return;
                         }
+                        // Bug #4: collect stove and leaf processor outputs
+                        else if (stove != null && stove.OutputReady > 0)
+                        {
+                            cState = ChefState.GoingToStoveToCollect;
+                            SetTarget(stove.transform.position);
+                            return;
+                        }
+                        else if (leafProcessor != null && leafProcessor.OutputReady > 0)
+                        {
+                            cState = ChefState.GoingToLeafToCollect;
+                            SetTarget(leafProcessor.transform.position);
+                            return;
+                        }
                     }
 
-                    // If we have items carried, let's go deposit them first!
-                    if (CarryCount > 0 && (ketchupCount > 0 || breadCount > 0 || flourCount > 0))
+                    // If we have processed items carried, deposit them first
+                    if (CarryCount > 0 && (ketchupCount > 0 || breadCount > 0 || flourCount > 0 || friedEggCount > 0 || herbPackCount > 0))
                     {
                         cState = ChefState.GoingToDeposit;
                         SetTarget(DepositPos());
@@ -200,7 +235,21 @@ namespace MiniMart.Characters
                             SetTarget(RackPos(ItemType.Tomato));
                             return;
                         }
-                        // Spec: chef fetches from the FARM by himself when storage has none.
+                        // Bug #4: Check Stove (FriedEgg): Needs 1 Egg
+                        else if (stove != null && stove.InputQueued < stove.StackCapacity && inventory.CountOf(ItemType.Egg) >= 1)
+                        {
+                            cState = ChefState.GoingToWithdrawEggForStove;
+                            SetTarget(RackPos(ItemType.Egg));
+                            return;
+                        }
+                        // Bug #4: Check LeafProcessor (HerbPack): Needs 1 Herb
+                        else if (leafProcessor != null && leafProcessor.InputQueued < leafProcessor.StackCapacity && inventory.CountOf(ItemType.Herb) >= 1)
+                        {
+                            cState = ChefState.GoingToWithdrawHerbForLeaf;
+                            SetTarget(RackPos(ItemType.Herb));
+                            return;
+                        }
+                        // Self-fetch from farms when storage is empty
                         else if (blender != null && blender.InputQueued < blender.StackCapacity
                                  && tomatoFarm != null && tomatoFarm.TotalRipe() > 0)
                         {
@@ -386,13 +435,84 @@ namespace MiniMart.Characters
                 case ChefState.GoingToDeposit:
                     if (inventory != null)
                     {
-                        if (ketchupCount > 0) inventory.Deposit(ItemType.TomatoKetchup, ketchupCount);
-                        if (breadCount > 0) inventory.Deposit(ItemType.Bread, breadCount);
-                        if (flourCount > 0) inventory.Deposit(ItemType.WheatFlour, flourCount);
-                        if (tomatoCount > 0) inventory.Deposit(ItemType.Tomato, tomatoCount);
-                        if (wheatCount > 0) inventory.Deposit(ItemType.Wheat, wheatCount);
-                        if (eggCount > 0) inventory.Deposit(ItemType.Egg, eggCount);
+                        if (ketchupCount > 0)  inventory.Deposit(ItemType.TomatoKetchup, ketchupCount);
+                        if (breadCount > 0)    inventory.Deposit(ItemType.Bread, breadCount);
+                        if (flourCount > 0)    inventory.Deposit(ItemType.WheatFlour, flourCount);
+                        if (tomatoCount > 0)   inventory.Deposit(ItemType.Tomato, tomatoCount);
+                        if (wheatCount > 0)    inventory.Deposit(ItemType.Wheat, wheatCount);
+                        if (eggCount > 0)      inventory.Deposit(ItemType.Egg, eggCount);
+                        if (herbCount > 0)     inventory.Deposit(ItemType.Herb, herbCount);           // Bug #4
+                        if (friedEggCount > 0) inventory.Deposit(ItemType.FriedEgg, friedEggCount);   // Bug #4
+                        if (herbPackCount > 0) inventory.Deposit(ItemType.HerbPack, herbPackCount);   // Bug #4
                         DropAllChef();
+                    }
+                    cState = ChefState.Deciding;
+                    break;
+
+                // ── Bug #4: Stove (Egg → FriedEgg) ────────────────────────────────────
+                case ChefState.GoingToWithdrawEggForStove:
+                    {
+                        int amount = Mathf.Min(room, stove.StackCapacity - stove.InputQueued, inventory.CountOf(ItemType.Egg));
+                        if (amount > 0 && inventory.Withdraw(ItemType.Egg, amount))
+                        {
+                            TryPickUpItem(amount, ItemType.Egg);
+                            cState = ChefState.GoingToStoveToLoad;
+                            SetTarget(stove.transform.position);
+                        }
+                        else cState = ChefState.Deciding;
+                    }
+                    break;
+
+                case ChefState.GoingToStoveToLoad:
+                    if (stove != null && eggCount > 0)
+                    {
+                        int load = Mathf.Min(eggCount, stove.StackCapacity - stove.InputQueued);
+                        stove.LoadInput(load);
+                        eggCount -= load;
+                        CarryCount -= load;
+                    }
+                    cState = ChefState.Deciding;
+                    break;
+
+                case ChefState.GoingToStoveToCollect:
+                    if (stove != null)
+                    {
+                        int ready = stove.CollectFinished();
+                        if (ready > 0) TryPickUpItem(ready, ItemType.FriedEgg);
+                    }
+                    cState = ChefState.Deciding;
+                    break;
+
+                // ── Bug #4: LeafProcessor (Herb → HerbPack) ────────────────────────────
+                case ChefState.GoingToWithdrawHerbForLeaf:
+                    {
+                        int amount = Mathf.Min(room, leafProcessor.StackCapacity - leafProcessor.InputQueued, inventory.CountOf(ItemType.Herb));
+                        if (amount > 0 && inventory.Withdraw(ItemType.Herb, amount))
+                        {
+                            TryPickUpItem(amount, ItemType.Herb);
+                            cState = ChefState.GoingToLeafToLoad;
+                            SetTarget(leafProcessor.transform.position);
+                        }
+                        else cState = ChefState.Deciding;
+                    }
+                    break;
+
+                case ChefState.GoingToLeafToLoad:
+                    if (leafProcessor != null && herbCount > 0)
+                    {
+                        int load = Mathf.Min(herbCount, leafProcessor.StackCapacity - leafProcessor.InputQueued);
+                        leafProcessor.LoadInput(load);
+                        herbCount -= load;
+                        CarryCount -= load;
+                    }
+                    cState = ChefState.Deciding;
+                    break;
+
+                case ChefState.GoingToLeafToCollect:
+                    if (leafProcessor != null)
+                    {
+                        int ready = leafProcessor.CollectFinished();
+                        if (ready > 0) TryPickUpItem(ready, ItemType.HerbPack);
                     }
                     cState = ChefState.Deciding;
                     break;

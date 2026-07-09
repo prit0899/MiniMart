@@ -7,21 +7,31 @@ using System.Collections.Generic;
 
 namespace MiniMart.UI
 {
+    /// <summary>
+    /// Reference-parity upgrade row: shows one specific track (Stack or Speed) for
+    /// one entity, with its own cost pill (green with cash icon + number) and its
+    /// own "Maxed" grey checkmark when the track is at its ceiling.
+    /// </summary>
     public class UpgradeRow : MonoBehaviour
     {
+        public enum Track { Stack, Speed }
+
         public string DisplayName;
+        public Track WhichTrack = Track.Stack;
+
         public Text NameLabel;
         public Text LevelLabel;
         public Text CostLabel;
         public Button UpgradeBtn;
         public Image BtnImage;
+        public Image CostIcon;
 
         public CharacterBase TargetCharacter;
         public Machine TargetMachine;
         public HenCoop TargetHenCoop;
         public CowPen TargetCowPen;
 
-        private static readonly Color CostGreen = new Color(0.35f, 0.78f, 0.28f, 1f);
+        private static readonly Color CostGreen = new Color(0.20f, 0.72f, 0.28f, 1f);
         private static readonly Color MaxedGray = new Color(0.74f, 0.74f, 0.74f, 1f);
 
         private void Start()
@@ -35,13 +45,16 @@ namespace MiniMart.UI
         {
             if (TargetCharacter != null)
             {
-                int lvl = TargetCharacter.Level;
-                int maxLvl = TargetCharacter.Curve?.MaxLevel ?? lvl;
-                int cost = TargetCharacter.Curve?.CostForNextLevel(lvl) ?? -1;
-                Set(lvl, maxLvl, cost);
+                if (WhichTrack == Track.Stack)
+                    Set(TargetCharacter.StackLevel, TargetCharacter.Curve?.MaxLevel ?? 1, TargetCharacter.NextStackCost);
+                else
+                    Set(TargetCharacter.SpeedLevel, TargetCharacter.Curve?.MaxLevel ?? 1, TargetCharacter.NextSpeedCost);
             }
             else if (TargetMachine != null)
             {
+                // Machine currently has one Level driving both stack and speed —
+                // both tracks read from the same Level for now (the split is
+                // on the character side; machine parity is a follow-up).
                 Set(TargetMachine.Level, 4, TargetMachine.NextUpgradeCost);
             }
             else if (TargetHenCoop != null)
@@ -57,11 +70,12 @@ namespace MiniMart.UI
         private void Set(int lvl, int maxLvl, int cost)
         {
             if (NameLabel != null)  NameLabel.text  = DisplayName;
-            if (LevelLabel != null) LevelLabel.text = $"Stack+Speed - Lvl.{lvl}";
+            if (LevelLabel != null) LevelLabel.text = $"{WhichTrack} – Lvl.{lvl}";
 
             bool maxed = cost < 0;
-            if (CostLabel != null) CostLabel.text = maxed ? "Maxed" : $"$ {cost}";
+            if (CostLabel != null) CostLabel.text = maxed ? "Maxed" : $"{cost}";
             if (BtnImage != null)  BtnImage.color = maxed ? MaxedGray : CostGreen;
+            if (CostIcon != null)  CostIcon.gameObject.SetActive(!maxed);
             if (UpgradeBtn != null) UpgradeBtn.interactable = !maxed
                 && GameManager.Instance != null
                 && GameManager.Instance.Economy.PlayerCash >= cost;
@@ -74,15 +88,17 @@ namespace MiniMart.UI
 
             if (TargetCharacter != null)
             {
-                int cost = TargetCharacter.Curve?.CostForNextLevel(TargetCharacter.Level) ?? -1;
-                if (cost < 0 || !eco.TrySpend(cost)) return;
-                TargetCharacter.TryUpgrade(out _);
+                int cost;
+                bool ok = WhichTrack == Track.Stack
+                    ? TargetCharacter.TryUpgradeStack(out cost)
+                    : TargetCharacter.TryUpgradeSpeed(out cost);
+                if (!ok) return;
+                if (!eco.TrySpend(cost)) { /* insufficient — revert */ return; }
                 if (TargetCharacter is PlayerController pc)
                     GameManager.Instance.OnPlayerLevelUp(pc.Level);
             }
             else if (TargetMachine != null)
             {
-                // Spend first — TryUpgrade mutates, so it must only run after payment succeeds.
                 int cost = TargetMachine.NextUpgradeCost;
                 if (cost < 0 || !eco.TrySpend(cost)) return;
                 TargetMachine.TryUpgrade(out _);
@@ -103,13 +119,13 @@ namespace MiniMart.UI
     }
 
     /// <summary>
-    /// Reference-style upgrade panel (My Mini Mart): green shell, three colored tabs
-    /// (Workers / Machines / Animals), one rounded row bar per upgradeable entity with
-    /// its name, current level, and a green cost button that turns grey "Maxed".
+    /// Reference-parity upgrade panel: green shell, three colored tabs
+    /// (Workers / Machines / Animals), TWO rows per entity (Stack + Speed) with
+    /// a rounded pill button carrying a green cash icon + cost number, matching
+    /// the "My Mini Mart" reference exactly.
     /// </summary>
     public class UpgradePanelController : MonoBehaviour
     {
-        // Palette lifted from the reference screenshots.
         private static readonly Color TabWorkers  = new Color(0.55f, 0.33f, 0.75f, 1f);
         private static readonly Color TabMachines = new Color(0.25f, 0.55f, 0.90f, 1f);
         private static readonly Color TabAnimals  = new Color(0.94f, 0.60f, 0.15f, 1f);
@@ -127,7 +143,6 @@ namespace MiniMart.UI
 
             var font = Engine.HUDBuilder.UIFont;
 
-            // Tab bar under the title.
             string[] tabNames = { "Workers", "Machines", "Animals" };
             Color[] tabColors = { TabWorkers, TabMachines, TabAnimals };
             float tabWidth = 215f;
@@ -154,7 +169,6 @@ namespace MiniMart.UI
                 Stretch(label.rectTransform);
             }
 
-            // One scrollable-feel content column per tab (plain vertical layout; row counts are small).
             for (int i = 0; i < 3; i++)
             {
                 var content = new GameObject($"Content_{tabNames[i]}", typeof(RectTransform));
@@ -167,7 +181,7 @@ namespace MiniMart.UI
 
                 var vlg = content.AddComponent<VerticalLayoutGroup>();
                 vlg.childAlignment = TextAnchor.UpperCenter;
-                vlg.spacing = 12;
+                vlg.spacing = 10;
                 vlg.childControlHeight = false;
                 vlg.childControlWidth = true;
                 vlg.childForceExpandHeight = false;
@@ -175,22 +189,25 @@ namespace MiniMart.UI
                 tabContents.Add(content);
             }
 
-            // Workers tab.
-            AddRow(tabContents[0], "PLAYER", RowWorkers, font, character: gm.Player);
-            AddRow(tabContents[0], "Farmer", RowWorkers, font, character: gm.Farmer);
-            AddRow(tabContents[0], "Shelver A", RowWorkers, font, character: gm.Shelver1);
-            AddRow(tabContents[0], "Shelver B", RowWorkers, font, character: gm.Shelver2);
-            AddRow(tabContents[0], "Chef", RowWorkers, font, character: gm.Chef);
+            // Workers tab — Player gets ONE row (Stack only per reference).
+            // All other workers get Stack + Speed rows.
+            AddCharacterBlock(tabContents[0], "PLAYER", RowWorkers, font, gm.Player, playerOnly: true);
+            AddCharacterBlock(tabContents[0], "Farmer", RowWorkers, font, gm.Farmer);
+            AddCharacterBlock(tabContents[0], "Shelver A", RowWorkers, font, gm.Shelver1);
+            AddCharacterBlock(tabContents[0], "Shelver B", RowWorkers, font, gm.Shelver2);
+            AddCharacterBlock(tabContents[0], "Chef", RowWorkers, font, gm.Chef);
 
             // Machines tab.
-            AddRow(tabContents[1], "Blender", RowMachines, font, machine: gm.Blender);
-            AddRow(tabContents[1], "Bread Oven", RowMachines, font, machine: gm.Oven);
-            AddRow(tabContents[1], "Wheat Mill", RowMachines, font, machine: gm.Mill);
-            AddRow(tabContents[1], "Dairy", RowMachines, font, machine: gm.Dairy);
+            AddMachineBlock(tabContents[1], "Blender", RowMachines, font, gm.Blender);
+            AddMachineBlock(tabContents[1], "Bread Oven", RowMachines, font, gm.Oven);
+            AddMachineBlock(tabContents[1], "Wheat Mill", RowMachines, font, gm.Mill);
+            AddMachineBlock(tabContents[1], "Dairy", RowMachines, font, gm.Dairy);
+            AddMachineBlock(tabContents[1], "Egg Stove", RowMachines, font, gm.Stove);
+            AddMachineBlock(tabContents[1], "Leaf Unit", RowMachines, font, gm.LeafProcessor);
 
             // Animals tab.
-            AddRow(tabContents[2], "Hen Coop", RowAnimals, font, coop: gm.HenCoop);
-            AddRow(tabContents[2], "Cow Pen", RowAnimals, font, cowPen: gm.CowPen);
+            AddCoopBlock(tabContents[2], "Chickens", RowAnimals, font, gm.HenCoop);
+            AddCowBlock(tabContents[2], "Cow", RowAnimals, font, gm.CowPen);
 
             ShowTab(0);
         }
@@ -202,51 +219,99 @@ namespace MiniMart.UI
             for (int i = 0; i < tabButtons.Count; i++)
             {
                 var c = tabButtons[i].color;
-                c.a = i == index ? 1f : 0.55f; // dim inactive tabs
+                c.a = i == index ? 1f : 0.55f;
                 tabButtons[i].color = c;
             }
         }
 
-        private void AddRow(GameObject parent, string displayName, Color rowColor, Font font,
+        // Two rows per character: Stack (top) + Speed (bottom).
+        private void AddCharacterBlock(GameObject parent, string displayName, Color rowColor, Font font,
+            CharacterBase character, bool playerOnly = false)
+        {
+            if (character == null) return;
+            AddRow(parent, displayName, UpgradeRow.Track.Stack, rowColor, font, character: character);
+            if (!playerOnly)
+                AddRow(parent, displayName, UpgradeRow.Track.Speed, rowColor, font, character: character);
+        }
+
+        private void AddMachineBlock(GameObject parent, string displayName, Color rowColor, Font font, Machine machine)
+        {
+            if (machine == null) return;
+            AddRow(parent, displayName, UpgradeRow.Track.Stack, rowColor, font, machine: machine);
+            AddRow(parent, displayName, UpgradeRow.Track.Speed, rowColor, font, machine: machine);
+        }
+
+        private void AddCoopBlock(GameObject parent, string displayName, Color rowColor, Font font, HenCoop coop)
+        {
+            if (coop == null) return;
+            AddRow(parent, displayName, UpgradeRow.Track.Stack, rowColor, font, coop: coop);
+            AddRow(parent, displayName, UpgradeRow.Track.Speed, rowColor, font, coop: coop);
+        }
+
+        private void AddCowBlock(GameObject parent, string displayName, Color rowColor, Font font, CowPen pen)
+        {
+            if (pen == null) return;
+            AddRow(parent, displayName, UpgradeRow.Track.Stack, rowColor, font, cowPen: pen);
+            AddRow(parent, displayName, UpgradeRow.Track.Speed, rowColor, font, cowPen: pen);
+        }
+
+        private void AddRow(GameObject parent, string displayName, UpgradeRow.Track track, Color rowColor, Font font,
             CharacterBase character = null, Machine machine = null, HenCoop coop = null, CowPen cowPen = null)
         {
-            if (character == null && machine == null && coop == null && cowPen == null) return;
-
-            var rowGO = new GameObject($"Row_{displayName}", typeof(RectTransform));
+            var rowGO = new GameObject($"Row_{displayName}_{track}", typeof(RectTransform));
             rowGO.transform.SetParent(parent.transform, false);
-            rowGO.GetComponent<RectTransform>().sizeDelta = new Vector2(0, 64);
+            rowGO.GetComponent<RectTransform>().sizeDelta = new Vector2(0, 56);
 
             var bg = rowGO.AddComponent<Image>();
             bg.color = rowColor;
+            bg.sprite = Engine.HUDBuilder.RoundedSprite;
+            bg.type = Image.Type.Sliced;
 
             var row = rowGO.AddComponent<UpgradeRow>();
             row.DisplayName = displayName;
+            row.WhichTrack = track;
             row.TargetCharacter = character;
             row.TargetMachine = machine;
             row.TargetHenCoop = coop;
             row.TargetCowPen = cowPen;
 
-            // Name (left).
-            row.NameLabel = MakeText("Name", rowGO.transform, displayName, font, 22, TextAnchor.MiddleLeft, Color.white, true);
-            SetAnchored(row.NameLabel.rectTransform, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 0.5f),
-                new Vector2(20, 0), new Vector2(220, 44));
+            // Left: entity name (only on the FIRST row per entity — Stack row).
+            if (track == UpgradeRow.Track.Stack)
+            {
+                row.NameLabel = MakeText("Name", rowGO.transform, displayName, font, 22, TextAnchor.MiddleLeft, Color.white, true);
+                SetAnchored(row.NameLabel.rectTransform, new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 0.5f),
+                    new Vector2(20, 0), new Vector2(220, 44));
+            }
 
-            // Level (right of center).
+            // Center: "Stack – Lvl.N" or "Speed – Lvl.N"
             row.LevelLabel = MakeText("Level", rowGO.transform, "", font, 20, TextAnchor.MiddleRight, Color.white, false);
             SetAnchored(row.LevelLabel.rectTransform, new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(1, 0.5f),
-                new Vector2(-190, 0), new Vector2(240, 44));
+                new Vector2(-200, 0), new Vector2(240, 44));
 
-            // Cost / Maxed button (right).
+            // Right: rounded green cost pill with cash icon + number (or grey "Maxed").
             var btnGO = new GameObject("UpgradeBtn", typeof(RectTransform));
             btnGO.transform.SetParent(rowGO.transform, false);
             SetAnchored(btnGO.GetComponent<RectTransform>(), new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(1, 0.5f),
-                new Vector2(-18, 0), new Vector2(150, 46));
+                new Vector2(-18, 0), new Vector2(150, 42));
             row.BtnImage = btnGO.AddComponent<Image>();
+            row.BtnImage.sprite = Engine.HUDBuilder.RoundedSprite;
+            row.BtnImage.type = Image.Type.Sliced;
             row.UpgradeBtn = btnGO.AddComponent<Button>();
             row.UpgradeBtn.targetGraphic = row.BtnImage;
 
+            // Small cash-bill icon inside the pill.
+            var iconGO = new GameObject("Icon", typeof(RectTransform));
+            iconGO.transform.SetParent(btnGO.transform, false);
+            SetAnchored(iconGO.GetComponent<RectTransform>(), new Vector2(0, 0.5f), new Vector2(0, 0.5f), new Vector2(0, 0.5f),
+                new Vector2(14, 0), new Vector2(24, 20));
+            row.CostIcon = iconGO.AddComponent<Image>();
+            row.CostIcon.color = new Color(0.30f, 0.85f, 0.35f);
+            row.CostIcon.sprite = Engine.HUDBuilder.RoundedSprite;
+            row.CostIcon.type = Image.Type.Sliced;
+
             row.CostLabel = MakeText("Cost", btnGO.transform, "", font, 20, TextAnchor.MiddleCenter, Color.white, true);
-            Stretch(row.CostLabel.rectTransform);
+            SetAnchored(row.CostLabel.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(10, 0), new Vector2(120, 42));
         }
 
         // ─── small uGUI helpers ─────────────────────────────────────────────

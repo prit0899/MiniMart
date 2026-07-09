@@ -13,6 +13,7 @@ namespace MiniMart.Characters
         public WheatFarm wheatFarm;
         public TomatoFarm tomatoFarm;
         public CowPen cowPen;
+        public HerbPatch herbPatch;
         private StoreInventory inventory;
 
         private enum FarmerState
@@ -22,6 +23,7 @@ namespace MiniMart.Characters
             GoingToWheatFarm,
             GoingToTomatoFarm,
             GoingToCowPen,
+            GoingToHerbPatch,
             GoingToDeposit
         }
 
@@ -30,6 +32,7 @@ namespace MiniMart.Characters
         private int wheatCount = 0;
         private int tomatoCount = 0;
         private int milkCount = 0;
+        private int herbCount = 0;
 
         public void Configure(StoreInventory storeInventory)
         {
@@ -48,6 +51,7 @@ namespace MiniMart.Characters
                 else if (item == ItemType.Wheat) wheatCount += amount;
                 else if (item == ItemType.Tomato) tomatoCount += amount;
                 else if (item == ItemType.Milk) milkCount += amount;
+                else if (item == ItemType.Herb) herbCount += amount;
                 return true;
             }
             return false;
@@ -60,6 +64,7 @@ namespace MiniMart.Characters
             wheatCount = 0;
             tomatoCount = 0;
             milkCount = 0;
+            herbCount = 0;
         }
 
         private int farmCursor; // rotates coop -> wheat -> tomato so every farm gets serviced
@@ -78,14 +83,15 @@ namespace MiniMart.Characters
             if (wheatCount > most) { best = ItemType.Wheat; most = wheatCount; }
             if (tomatoCount > most) { best = ItemType.Tomato; most = tomatoCount; }
             if (milkCount > most) { best = ItemType.Milk; most = milkCount; }
+            if (herbCount > most) { best = ItemType.Herb; most = herbCount; }
             return Engine.StorageRack.PositionOf(best, new Vector3(5f, 0f, 10f));
         }
 
         private bool TryChooseFarm()
         {
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < 5; i++)
             {
-                int pick = (farmCursor + i) % 4;
+                int pick = (farmCursor + i) % 5;
                 if (pick == 0 && FarmActive(henCoop) && henCoop.TotalEggsReady() > 0 && HasStorageRoom(ItemType.Egg))
                 {
                     farmCursor = 1;
@@ -109,9 +115,16 @@ namespace MiniMart.Characters
                 }
                 if (pick == 3 && FarmActive(cowPen) && cowPen.TotalMilkReady() > 0 && HasStorageRoom(ItemType.Milk))
                 {
-                    farmCursor = 0;
+                    farmCursor = 4;
                     fState = FarmerState.GoingToCowPen;
                     SetTarget(cowPen.transform.position);
+                    return true;
+                }
+                if (pick == 4 && FarmActive(herbPatch) && herbPatch.TotalRipe() > 0 && HasStorageRoom(ItemType.Herb))
+                {
+                    farmCursor = 0;
+                    fState = FarmerState.GoingToHerbPatch;
+                    SetTarget(herbPatch.transform.position);
                     return true;
                 }
             }
@@ -180,6 +193,15 @@ namespace MiniMart.Characters
                     fState = FarmerState.Deciding;
                     break;
 
+                case FarmerState.GoingToHerbPatch:
+                    if (herbPatch != null)
+                    {
+                        int herbs = herbPatch.Harvest(room);
+                        if (herbs > 0) TryPickUpItem(herbs, ItemType.Herb);
+                    }
+                    fState = FarmerState.Deciding;
+                    break;
+
                 case FarmerState.GoingToDeposit:
                     if (CarryCount > 0 && inventory != null)
                     {
@@ -187,6 +209,7 @@ namespace MiniMart.Characters
                         if (wheatCount > 0) inventory.Deposit(ItemType.Wheat, wheatCount);
                         if (tomatoCount > 0) inventory.Deposit(ItemType.Tomato, tomatoCount);
                         if (milkCount > 0) inventory.Deposit(ItemType.Milk, milkCount);
+                        if (herbCount > 0) inventory.Deposit(ItemType.Herb, herbCount);
                         DropAllFarmer();
                     }
                     fState = FarmerState.Deciding;

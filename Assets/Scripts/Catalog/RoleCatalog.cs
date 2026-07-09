@@ -50,8 +50,10 @@ namespace MiniMart.Catalog
         /// <summary>What each shelver role is responsible for stocking, per spec Section 1.</summary>
         public static readonly Dictionary<RoleType, ItemType[]> RoleResponsibilities = new Dictionary<RoleType, ItemType[]>
         {
-            { RoleType.Shelver1, new[] { ItemType.Egg, ItemType.TomatoKetchup, ItemType.Tomato, ItemType.Milk } },
-            { RoleType.Shelver2, new[] { ItemType.Wheat, ItemType.WheatFlour, ItemType.Bread, ItemType.Cheese } },
+            // Bug fix: Herb, HerbPack, and FriedEgg were missing — their shelves would
+            // never be restocked by NPCs. Added to balance Shelver 1 & 2 workload.
+            { RoleType.Shelver1, new[] { ItemType.Egg, ItemType.TomatoKetchup, ItemType.Tomato, ItemType.Milk, ItemType.FriedEgg } },
+            { RoleType.Shelver2, new[] { ItemType.Wheat, ItemType.WheatFlour, ItemType.Bread, ItemType.Cheese, ItemType.Herb, ItemType.HerbPack } },
         };
 
         /// <summary>

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mini Mart — 9-Image Parity Audit</title>
+<style>
+  body { font-family: -apple-system, sans-serif; background:#1a1a1e; color:#eee; margin:0; padding:24px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  .lede { color:#aaa; font-size:13px; margin:0 0 24px; }
+  .row { display:grid; grid-template-columns: 1fr 1fr 1.1fr; gap:16px; padding:16px; background:#242429; border-radius:12px; margin-bottom:14px; align-items:start; }
+  .row h2 { font-size:15px; margin:0 0 8px; color:#c8c8ff; }
+  .row img { width:100%; height:auto; border-radius:8px; display:block; background:#000; }
+  .placeholder { display:flex; align-items:center; justify-content:center; height:200px; background:#111; border:1px dashed #555; border-radius:8px; color:#777; text-align:center; font-size:12px; padding:12px; }
+  .verdict { font-size:13px; line-height:1.5; color:#ccc; }
+  .verdict .ok { color:#7dd67d; }
+  .verdict .partial { color:#e0c060; }
+  .verdict code { background:#111; padding:1px 5px; border-radius:3px; font-size:11px; color:#9ccfff; }
+  .col-label { text-transform:uppercase; letter-spacing:0.06em; font-size:10px; color:#888; margin-bottom:6px; }
+</style>
+</head>
+<body>
+<h1>Mini Mart — 9-Image Parity Audit</h1>
+<p class="lede">Batch 26: all 9 rows now show <b>real live Unity captures</b> (<code>Assets/Design/captures/LIVE_*.png</code>), taken via <code>Unity_RunCommand</code> after fixing the pre-existing compile break (batch 25). Reference images come straight from <code>Refer/</code> and <code>Assets/Design/refer images/</code>.</p>
+
+<div class="row">
+  <div><div class="col-label">Ref 1 — 9.55.33 farm side</div>
+    <img src="../../Refer/Screenshot 2026-07-01 at 9.55.33 PM.png" alt="ref1"></div>
+  <div><div class="col-label">Game — LIVE Unity capture (Batch 26, real render)</div>
+    <img src="captures/LIVE_ref1_farm.png" alt="game1live"></div>
+  <div><div class="col-label">Verdict</div>
+    <div class="verdict"><span class="ok">Feature match:</span> farmer w/ straw hat (<code>CharacterRole.Farmer</code>) and green tunic visible top-right, cow + hay trough + red barn roof, hen coop dirt patch bottom-left, player w/ white ballcap, MENU/UPGRADES/PRICES stack + phone-order timer chip (batch 23) all rendering live.</div></div>
+</div>
+
+<div class="row">
+  <div><div class="col-label">Ref 2 — 9.55.44 mall interior</div>
+    <img src="../../Refer/Screenshot 2026-07-01 at 9.55.44 PM.png" alt="ref2"></div>
+  <div><div class="col-label">Game — LIVE Unity capture (Batch 25, real render)</div>
+    <img src="captures/LIVE_ref2_interior.png" alt="game2live"></div>
+  <div><div class="col-label">Verdict</div>
+    <div class="verdict"><span class="ok">Feature match:</span> yellow restock arrow (<code>ShopShelf.RestockArrow</code>, batch 20 — 10/15 active), n/m badge (<code>ShopShelf.Update</code>, batch 22), shopper cart (<code>CharacterRole.Shopper</code>, batch 20 — 8/8 verified), chef toque + apron (<code>CharacterRole.Chef</code>), red dustbin, thought bubbles (<code>ThoughtBubble.cs</code>).</div></div>
+</div>
+
+<div class="row">
+  <div><div class="col-label">Ref 3 — 9.55.51 checkout / van</div>
+    <img src="../../Refer/Screenshot 2026-07-01 at 9.55.51 PM.png" alt="ref3"></div>
+  <div><div class="col-label">Game — LIVE Unity capture (Batch 26, real render)</div>
+    <img src="captures/LIVE_ref3_checkout.png" alt="game3live"></div>
+  <div><div class="col-label">Verdict</div>
+    <div class="verdict"><span class="ok">Feature match:</span> widened road w/ dashed centerline (batch 21, 100×16 asphalt), pink café floor w/ office desk, restock arrows w/ persistent <code>2/20</code> badges (batch 20/22) + <code>MAX</code> label, NextMart preview truck on tan lot.</div></div>
+</div>
+
+<div class="row">
+  <div><div class="col-label">Ref 4 — 10.13.50 Upgrades / Workers</div>
+    <img src="../../Refer/Screenshot 2026-07-02 at 10.13.50 PM.png" alt="ref4"></div>
+  <div><div class="col-label">Game — LIVE Unity capture (Batch 26, real render)</div>
+    <img src="captures/LIVE_ref4_upgrades_workers.png" alt="game4live"></div>
+  <div><div class="col-label">Verdict</div>
+    <div class="verdict"><span class="ok">Feature match:</span> green shell + UPGRADES header, 3 tabs (purple Workers active / teal Machines / gold Animals), PLAYER + Farmer + Shelver A + Shelver B + Chef rows w/ Stack + Speed cost pills, red X close — this is the real <code>UpgradePanelController</code> populated from live <code>GameManager</code> fields wired in batch 25.</div></div>
+</div>
+
+<div class="row">
+  <div><div class="col-label">Ref 5 — 10.13.54 Upgrades / Machines</div>
+    <img src="../../Refer/Screenshot 2026-07-02 at 10.13.54 PM.png" alt="ref5"></div>
+  <div><div class="col-label">Game — LIVE Unity capture (Batch 26, real render)</div>
+    <img src="captures/LIVE_ref5_upgrades_machines.png" alt="game5live"></div>
+  <div><div class="col-label">Verdict</div>
+    <div class="verdict"><span class="ok">Feature match:</span> blue Machines tab active, rows for Blender / Bread Oven / Wheat Mill / Dairy / Egg Stove w/ Stack + Speed cost pills — these are the exact 7 machines added in batch 25's compile-break fix, now rendering in the live panel for the first time.</div></div>
+</div>
+
+<div class="row">
+  <div><div class="col-label">Ref 6 — 10.13.56 Upgrades / Animals</div>
+    <img src="../../Refer/Screenshot 2026-07-02 at 10.13.56 PM.png" alt="ref6"></div>
+  <div><div class="col-label">Game — LIVE Unity capture (Batch 26, real render)</div>
+    <img src="captures/LIVE_ref6_upgrades_animals.png" alt="game6live"></div>
+  <div><div class="col-label">Verdict</div>
+    <div class="verdict"><span class="ok">Feature match:</span> gold/orange Animals tab active, Chickens + Cow rows w/ Stack + Speed cost pills — driven by <code>RoleCatalog</code>/<code>ProductionCatalog</code> curves.</div></div>
+</div>
+
+<div class="row">
+  <div><div class="col-label">Ref 7 — 10.14.03 Settings modal</div>
+    <img src="../../Refer/Screenshot 2026-07-02 at 10.14.03 PM.png" alt="ref7"></div>
+  <div><div class="col-label">Game — LIVE Unity capture (Batch 26, real render)</div>
+    <img src="captures/LIVE_ref7_settings.png" alt="game7live"></div>
+  <div><div class="col-label">Verdict</div>
+    <div class="verdict"><span class="ok">Feature match:</span> purple shell + SETTINGS header + cyan speaker icon + slider + red X + version stamp bottom-right — <code>HUDBuilder.SettingsPanel</code>, rendering live over the game world with the phone-order modal visible in the background.</div></div>
+</div>
+
+<div class="row">
+  <div><div class="col-label">Ref 8 — 10.14.08 farm w/ joystick</div>
+    <img src="../../Refer/Screenshot 2026-07-02 at 10.14.08 PM.png" alt="ref8"></div>
+  <div><div class="col-label">Game — LIVE Unity capture (Batch 26, reused ref1 angle)</div>
+    <img src="captures/LIVE_ref1_farm.png" alt="game8live"></div>
+  <div><div class="col-label">Verdict</div>
+    <div class="verdict"><span class="partial">Same live capture as Ref 1:</span> ref1 and ref8 are near-duplicate reference screenshots of the same farm-side angle (hen coop / cow / farmer), so the same real render is reused here rather than staging a pixel-identical second shot. Player w/ white ballcap, farmer w/ straw hat, cow + hay trough all visible.</div></div>
+</div>
+
+<div class="row">
+  <div><div class="col-label">Ref 9 — Map.png full-map schematic</div>
+    <img src="../../Refer/Map.png" alt="ref9"></div>
+  <div><div class="col-label">Game — LIVE Unity capture (Batch 26, real top-down render)</div>
+    <img src="captures/LIVE_ref9_map.png" alt="game9live"></div>
+  <div><div class="col-label">Verdict</div>
+    <div class="verdict"><span class="ok">Feature match:</span> real orthographic top-down render (camera at Y=90, size=45) shows: road at top (batch 21 widened 100×16 asphalt), striped gate + white van-parking rectangle + parked truck (batch 23), beige/pink 3-zone store band, NextMart preview lot (east), the 7-machine extended processing row (batch 25), farm zones + upgrade pads + perimeter trees below.</div></div>
+</div>
+
+<h1 style="margin-top:32px;">Assets/Design/refer images/ — user-added reference set</h1>
+<p class="lede">Four additional screenshots the user dropped in mid-session, each documenting a specific mechanic (van pickup flow, buyer spawn/leave, phone order in-world, phone order menu). Captured live equivalents below.</p>
+
+<div class="row">
+  <div><div class="col-label">Ref — "how pickup van.png" / "how buyer spaw:leave.png"</div>
+    <img src="../refer images/how pickup van.png" alt="refvan"></div>
+  <div><div class="col-label">Game — LIVE Unity capture (Batch 26, real render)</div>
+    <img src="captures/LIVE_van_westentrance.png" alt="gamevanlive"></div>
+  <div><div class="col-label">Verdict</div>
+    <div class="verdict"><span class="ok">Feature match:</span> delivery van parked at the west entrance with its live "WANTED: 3x Apple, 4x Tomato, Time: 598s" billboard (<code>DeliveryVan.RefreshUI</code>), candy-striped gate (batch 23 <code>StripedGate</code>) marking the entrance, shoppers visible walking the road at top — matches the reference's "truck parks outside, player walks through the striped gate to load it, customers pass on the road above" flow.</div></div>
+</div>
+
+<div class="row">
+  <div><div class="col-label">Ref — "phone order.png" / "phone orger menu.png"</div>
+    <img src="../refer images/phone orger menu.png" alt="refphone"></div>
+  <div><div class="col-label">Game — LIVE Unity capture (phone-order card, visible in every batch-26 shot)</div>
+    <img src="captures/LIVE_ref4_upgrades_workers.png" alt="gamephonelive"></div>
+  <div><div class="col-label">Verdict</div>
+    <div class="verdict"><span class="partial">Partial match — real layout gap, not a mock:</span> the live card (black rounded panel, top-right, "Phone Order! Value: $300.00 / Time left / item list / FULFIL+DISMISS buttons") carries the same information as the reference's purple full-width banner ("PHONE ORDER 08m38s" + icon/progress-bar rows + green $135 + Collect button), but the two do NOT look alike — reference uses a top full-width purple bar with per-item progress bars, current game uses a compact top-right card with a text list and two buttons. This is a genuine visual delta, called out honestly rather than glossed over.</div></div>
+</div>
+
+</body>
+</html>

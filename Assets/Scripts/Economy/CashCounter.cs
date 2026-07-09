@@ -29,15 +29,24 @@ namespace MiniMart.Economy
 
         public void RefreshUnlockState(int playerLevel)
         {
-            if (CounterIndex == 1)
+            switch (CounterIndex)
             {
-                IsUnlocked = playerLevel >= PriceCatalog.CashCounter1UnlockLevel;
-                HasCashier = playerLevel >= PriceCatalog.Cashier1AssignableLevel;
-            }
-            else
-            {
-                IsUnlocked = playerLevel >= PriceCatalog.CashCounter2UnlockLevel;
-                HasCashier = IsUnlocked; // counter 2 always comes with its cashier per spec
+                case 1:
+                    IsUnlocked = playerLevel >= PriceCatalog.CashCounter1UnlockLevel;
+                    HasCashier = playerLevel >= PriceCatalog.Cashier1AssignableLevel;
+                    break;
+                case 2:
+                    IsUnlocked = playerLevel >= PriceCatalog.CashCounter2UnlockLevel;
+                    HasCashier = IsUnlocked; // counter 2 always comes with its cashier per spec
+                    break;
+                case 3:
+                    IsUnlocked = playerLevel >= PriceCatalog.CashCounter3UnlockLevel;
+                    HasCashier = IsUnlocked;
+                    break;
+                default: // 4+
+                    IsUnlocked = playerLevel >= PriceCatalog.CashCounter4UnlockLevel;
+                    HasCashier = IsUnlocked;
+                    break;
             }
 
             // HasCashier was only ever a bool — no character existed in the world.
@@ -46,10 +55,13 @@ namespace MiniMart.Economy
             {
                 var go = new GameObject($"Cashier_{CounterIndex}");
                 go.transform.position = transform.position + new Vector3(0, 0, 0.95f);
+                go.transform.rotation = Quaternion.Euler(0, 180f, 0); // Face the buyers (queue is at -Z)
                 cashierVisual = go.AddComponent<Characters.Cashier>();
                 cashierVisual.AssignTo(this);
                 go.AddComponent<Engine.WobbleAnimator>();
-                Engine.PrimitiveFactory.BuildCharacter(go, new Color(0.95f, 0.55f, 0.20f)); // orange uniform
+                // Cashier variant: orange uniform + name tag on chest + chestnut hair.
+                Engine.PrimitiveFactory.BuildCharacter(go, new Color(0.95f, 0.55f, 0.20f),
+                    Engine.PrimitiveFactory.CharacterRole.Cashier);
             }
             else if (!HasCashier && cashierVisual != null)
             {
@@ -101,6 +113,7 @@ namespace MiniMart.Economy
             {
                 Engine.Emote.Happy(buyer.transform.position);
                 if (tipped) Engine.Emote.Heart(buyer.transform.position + new Vector3(0.4f, 0.3f, 0));
+                Engine.AudioFx.Sale();
             }
 
             // Reference flow: revenue is NOT auto-banked — it piles up as a physical money
@@ -109,6 +122,8 @@ namespace MiniMart.Economy
                 Engine.MoneyStack.SpawnOrMerge(transform.position + new Vector3(1.1f, 0, -0.4f), total);
 
             buyer.OnCheckedOut();
+            // Feeds the rotating mini-goals ("Serve N customers") in Retention.cs.
+            if (GameManager.Instance != null) GameManager.Instance.CustomersServed++;
             return total;
         }
     }

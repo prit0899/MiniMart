@@ -17,6 +17,11 @@ namespace MiniMart.Engine
 
         private static readonly Dictionary<ItemType, StorageRack> All = new Dictionary<ItemType, StorageRack>();
 
+        // Clear the registry on every play start so stale rack references never survive
+        // (important when "Enter Play Mode Options" disables domain reload).
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetRegistry() => All.Clear();
+
         private TextMesh badge;
         private float timer;
 
@@ -64,7 +69,28 @@ namespace MiniMart.Engine
                 if (mr != null) mr.material = font.material;
             }
             go.AddComponent<Billboard>();
+
+            // Visuals to showcase items like ShopShelf
+            itemVisuals = new GameObject[10]; // max 10 visuals
+            Color itemCol = Engine.PrimitiveFactory.ItemColor(Item);
+            Material mat = Engine.PrimitiveFactory.NewColoredMaterial(itemCol);
+            for (int i = 0; i < itemVisuals.Length; i++)
+            {
+                var vis = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                vis.transform.SetParent(transform, false);
+                vis.transform.localScale = new Vector3(0.4f, 0.4f, 0.4f);
+                float x = (i % 2 == 0) ? -0.25f : 0.25f;
+                float y = 0.2f + (i / 2) * 0.45f;
+                vis.transform.localPosition = new Vector3(x, y + 0.15f, 0.35f); // piled in the crate
+                Destroy(vis.GetComponent<Collider>());
+                vis.GetComponent<MeshRenderer>().material = mat;
+                vis.SetActive(false);
+                itemVisuals[i] = vis;
+            }
         }
+
+        private GameObject[] itemVisuals;
+        private int lastShown = -1;
 
         private void Update()
         {
@@ -73,7 +99,25 @@ namespace MiniMart.Engine
             timer = 0f;
             var inv = GameManager.Instance?.Inventory;
             if (inv == null || badge == null) return;
-            badge.text = $"{ShortName(Item)}\n{inv.CountOf(Item)}/{inv.CapacityOf(Item)}";
+            int count = inv.CountOf(Item);
+            int cap = inv.CapacityOf(Item);
+            // Only show the badge when the rack is EMPTY (needs restock) or FULL
+            // (ready to sell / withdraw). Idle-normal shows nothing — matches the
+            // reference which only surfaces counts at actionable states.
+            if (count == 0)      { badge.text = "0"; badge.gameObject.SetActive(true); }
+            else if (count >= cap){ badge.text = "MAX";badge.gameObject.SetActive(true); }
+            else                 { badge.gameObject.SetActive(false); }
+            
+            if (count != lastShown && itemVisuals != null)
+            {
+                lastShown = count;
+                // Show proportional visuals: max 10 cubes representing the stock
+                int visCount = Mathf.Min(count, itemVisuals.Length);
+                for (int i = 0; i < itemVisuals.Length; i++)
+                {
+                    itemVisuals[i].SetActive(i < visCount);
+                }
+            }
         }
 
         private static string ShortName(ItemType t) => t switch
