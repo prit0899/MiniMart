@@ -4,6 +4,7 @@ using MiniMart.Core;
 using MiniMart.Catalog;
 using MiniMart.Runtime;
 using MiniMart.Economy;
+using MiniMart.Characters;
 
 namespace MiniMart.Engine
 {
@@ -43,6 +44,10 @@ namespace MiniMart.Engine
 
         [System.NonSerialized] public Transform SpawnSpot;
         [System.NonSerialized] public Transform PickupSpot;
+        /// <summary>All shop shelves — orders may only request items whose shelf is
+        /// actually purchased/active (same rule buyers follow). Playtest: at L1 with
+        /// only the tomato stand, the first order demanded eggs — unfulfillable.</summary>
+        [System.NonSerialized] public List<ShopShelf> AllShelves;
 
         private float spawnTimer;
         private float nextSpawnTime;
@@ -57,7 +62,7 @@ namespace MiniMart.Engine
         {
             if (orderCounter == 0)
             {
-                nextSpawnTime = 15f; // First order arrives quickly so players know the feature exists
+                nextSpawnTime = 180f; // Give the player time to set up before the first order
             }
             else
             {
@@ -113,9 +118,16 @@ namespace MiniMart.Engine
                 TimeRemaining = PriceCatalog.PhoneOrderWindowMinutes * 60f
             };
 
+            // Only offer items that are BOTH level-unlocked AND have an active shelf
+            // in the store. This prevents orders for Eggs when the hen coop hasn't been
+            // purchased yet (the shelf is gated behind the purchase pad).
             var available = new List<ItemType>();
             foreach (ItemType item in System.Enum.GetValues(typeof(ItemType)))
-                if (PriceCatalog.IsUnlocked(item, playerLevel)) available.Add(item);
+            {
+                if (!PriceCatalog.IsUnlocked(item, playerLevel)) continue;
+                if (!HasActiveShelf(item)) continue;
+                available.Add(item);
+            }
 
             if (available.Count == 0) return;
 
@@ -217,5 +229,14 @@ namespace MiniMart.Engine
         }
 
         public System.Action<PhoneOrder> OnNewOrder;
+
+        /// <summary>True if the item has a visible, purchased shelf in the store.</summary>
+        private bool HasActiveShelf(ItemType item)
+        {
+            if (AllShelves == null) return false;
+            foreach (var s in AllShelves)
+                if (s != null && s.gameObject.activeInHierarchy && s.Item == item) return true;
+            return false;
+        }
     }
 }

@@ -108,10 +108,16 @@ namespace MiniMart.UI
 
         private static string UnlockTextFor(int level) => level switch
         {
-            2 => "Ketchup & Wheat unlocked for sale!\nMore customers arriving.",
-            3 => "Wheat Flour unlocked!\nWatch out — thieves start prowling from now on.",
-            4 => "Bread unlocked!\nCash Counter 2 opens with its own cashier.",
-            _ => "Customers arrive faster and orders get bigger!",
+            2  => "Ketchup Blender available!\nTurn tomatoes into ketchup for more profit.",
+            3  => "Wheat Farm & Counter 2 available!\nWatch out — thieves start prowling from now on.",
+            4  => "Wheat Mill available — and you can hire a Chef!",
+            5  => "Bread Oven & Egg Stove available!\nBaked goods sell for top dollar.",
+            6  => "THE MEGAMART OPENS!\nBuy the travel pad and visit your second store.",
+            7  => "MegaMart grows: Milk Bottler, Apple Orchard & Cheese Dairy!",
+            8  => "Corn Field & Corn Processor available in MegaMart!",
+            9  => "Herb Patch & Leaf Unit available in MegaMart!",
+            10 => "Coffee Bar unlocked — your empire is complete!",
+            _  => "Customers arrive faster and orders get bigger!",
         };
 
         private void Update()

@@ -8,5 +8,8 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Game.unity
     guid: 02cf07bc404294e26b74fa147014f3d7
+  - enabled: 1
+    path: Assets/MegaMart.unity
+    guid: afe28876597b545a591edac2b24ba451
   m_configObjects:
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}

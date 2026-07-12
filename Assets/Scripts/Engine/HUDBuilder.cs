@@ -45,6 +45,33 @@ namespace MiniMart.Engine
             }
         }
 
+        // ── Layer Lab UI pack (Assets/Resources/UI) ─────────────────────────
+        // Real panel/button art when present; every caller falls back to the
+        // procedural sprites so a missing import never breaks the HUD.
+        private static Sprite PackSprite(string name) => Resources.Load<Sprite>("UI/" + name);
+
+        /// <summary>Swap a panel to pack art (popup_bg) when available.</summary>
+        private static void ApplyPanelArt(Image panel)
+        {
+            var art = PackSprite("popup_bg");
+            if (art == null) return;
+            panel.sprite = art;
+            panel.type = Image.Type.Sliced;
+            panel.color = Color.white; // art carries its own palette
+        }
+
+        /// <summary>Swap a close button to pack art (btn_close) when available.</summary>
+        private static void ApplyCloseArt(Button btn, Text label)
+        {
+            var art = PackSprite("btn_close");
+            if (art == null) return;
+            var img = btn.GetComponent<Image>();
+            img.sprite = art;
+            img.type = Image.Type.Simple;
+            img.color = Color.white;
+            if (label != null) label.text = ""; // art already draws the X
+        }
+
         private static Sprite circleSprite;
         public static Sprite CircleSprite
         {
@@ -258,12 +285,14 @@ namespace MiniMart.Engine
             SetAnchored(pricePanel.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
                 new Vector2(0, 0), new Vector2(700, 620));
             RoundCorners(pricePanel, 16f);
+            ApplyPanelArt(pricePanel);
             pricePanel.gameObject.AddComponent<PricePanelController>();
             var priceTitle = NewText("PriceTitle", pricePanel.transform, "PRICING", 36, TextAnchor.MiddleCenter);
             priceTitle.fontStyle = FontStyle.Bold;
             SetAnchored(priceTitle.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0.5f, 1),
                 new Vector2(0, -24), new Vector2(500, 56));
-            var closePriceBtn = NewButton("ClosePricePanelButton", pricePanel.transform, "X", RedColor, out _);
+            var closePriceBtn = NewButton("ClosePricePanelButton", pricePanel.transform, "X", RedColor, out var closePriceTxt);
+            ApplyCloseArt(closePriceBtn, closePriceTxt);
             SetAnchored(closePriceBtn.GetComponent<RectTransform>(), new Vector2(1, 1), new Vector2(1, 1), new Vector2(1, 1),
                 new Vector2(-12, -12), new Vector2(56, 56));
 
@@ -274,9 +303,13 @@ namespace MiniMart.Engine
 
             // ── Upgrade panel (center overlay) ───────────────────────────────
             var upgradePanel = NewPanel("UpgradePanel", root, GreenShell);
+            // Batch 36: 700×560 → 740×640. Content now scrolls (UpgradePanelController
+            // wraps each tab in a ScrollRect), the larger shell just shows more rows
+            // before scrolling starts.
             SetAnchored(upgradePanel.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                new Vector2(0, 0), new Vector2(700, 560));
+                new Vector2(0, 0), new Vector2(740, 640));
             RoundCorners(upgradePanel, 16f);
+            ApplyPanelArt(upgradePanel);
             upgradePanel.gameObject.AddComponent<UpgradePanelController>();
 
             var upgradeTitle = NewText("UpgradeTitle", upgradePanel.transform, "UPGRADES", 36, TextAnchor.MiddleCenter);
@@ -284,7 +317,8 @@ namespace MiniMart.Engine
             SetAnchored(upgradeTitle.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0.5f, 1),
                 new Vector2(0, -24), new Vector2(500, 56));
             
-            var closeUpgradeBtn = NewButton("CloseUpgradePanelButton", upgradePanel.transform, "X", RedColor, out _);
+            var closeUpgradeBtn = NewButton("CloseUpgradePanelButton", upgradePanel.transform, "X", RedColor, out var closeUpTxt);
+            ApplyCloseArt(closeUpgradeBtn, closeUpTxt);
             SetAnchored(closeUpgradeBtn.GetComponent<RectTransform>(), new Vector2(1, 1), new Vector2(1, 1), new Vector2(1, 1),
                 new Vector2(-12, -12), new Vector2(56, 56));
 
@@ -357,6 +391,18 @@ namespace MiniMart.Engine
                 new Vector2(-40, 40), new Vector2(140, 140));
             netBtn.GetComponent<Image>().sprite = CircleSprite; // circular action button
 
+            // ── Dash button (above NET) — 1.6x speed burst, 2s on / 5s cooldown ──
+            var dashBtn = NewButton("DashButton", root, "DASH", new Color(0.95f, 0.60f, 0.20f, 0.9f), out _);
+            SetAnchored(dashBtn.GetComponent<RectTransform>(), new Vector2(1, 0), new Vector2(1, 0), new Vector2(1, 0),
+                new Vector2(-40, 196), new Vector2(120, 120));
+            var dashImg = dashBtn.GetComponent<Image>();
+            dashImg.sprite = CircleSprite;
+            dashBtn.onClick.AddListener(() => { if (input != null) input.TriggerDash(); });
+            // Grey the button out during cooldown so its state is always readable.
+            var dashCd = dashBtn.gameObject.AddComponent<DashCooldownTint>();
+            dashCd.Input = input;
+            dashCd.Target = dashImg;
+
             // ── Pause button (Settings acts as pause toggle too) ──────────
             var pauseBtn = settingsBtn; // Re-use settings as pause toggle
 
@@ -380,11 +426,13 @@ namespace MiniMart.Engine
             SetAnchored(settingsPanel.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
                 new Vector2(0, 0), new Vector2(700, 420));
             RoundCorners(settingsPanel, 16f);
+            ApplyPanelArt(settingsPanel);
             var settingsTitle = NewText("SettingsTitle", settingsPanel.transform, "SETTINGS", 36, TextAnchor.MiddleCenter);
             settingsTitle.fontStyle = FontStyle.Bold;
             SetAnchored(settingsTitle.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0.5f, 1),
                 new Vector2(0, -24), new Vector2(500, 56));
-            var closeSettingsBtn = NewButton("CloseSettingsButton", settingsPanel.transform, "X", RedColor, out _);
+            var closeSettingsBtn = NewButton("CloseSettingsButton", settingsPanel.transform, "X", RedColor, out var closeSetTxt);
+            ApplyCloseArt(closeSettingsBtn, closeSetTxt);
             SetAnchored(closeSettingsBtn.GetComponent<RectTransform>(), new Vector2(1, 1), new Vector2(1, 1), new Vector2(1, 1),
                 new Vector2(-12, -12), new Vector2(56, 56));
 
@@ -436,6 +484,50 @@ namespace MiniMart.Engine
             volHandleRt.sizeDelta = new Vector2(28, 28);
             vol.handleRect = volHandleRt;
             vol.onValueChanged.AddListener(v => AudioListener.volume = Mathf.Clamp01(v));
+
+            // ── Haptics toggle + graphics preset (plan.md §7 Settings) ──
+            var hapticLabel = NewText("HapticsLabel", settingsPanel.transform, "VIBRATION", 22, TextAnchor.MiddleLeft);
+            hapticLabel.fontStyle = FontStyle.Bold;
+            hapticLabel.color = new Color(0.20f, 0.20f, 0.30f);
+            SetAnchored(hapticLabel.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0.5f, 1),
+                new Vector2(-160, -200), new Vector2(160, 34));
+            var hapticBtn = NewButton("HapticsToggle", settingsPanel.transform,
+                PlayerPrefs.GetInt("MiniMart_Haptics", 1) == 1 ? "ON" : "OFF",
+                GreenColor, out var hapticTxt);
+            SetAnchored(hapticBtn.GetComponent<RectTransform>(), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0.5f, 1),
+                new Vector2(20, -200), new Vector2(90, 44));
+            RoundCorners(hapticBtn.GetComponent<Image>(), 12f);
+            hapticBtn.onClick.AddListener(() =>
+            {
+                int on = PlayerPrefs.GetInt("MiniMart_Haptics", 1) == 1 ? 0 : 1;
+                PlayerPrefs.SetInt("MiniMart_Haptics", on);
+                PlayerPrefs.Save();
+                if (hapticTxt != null) hapticTxt.text = on == 1 ? "ON" : "OFF";
+            });
+
+            var gfxLabel = NewText("GraphicsLabel", settingsPanel.transform, "GRAPHICS", 22, TextAnchor.MiddleLeft);
+            gfxLabel.fontStyle = FontStyle.Bold;
+            gfxLabel.color = new Color(0.20f, 0.20f, 0.30f);
+            SetAnchored(gfxLabel.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0.5f, 1),
+                new Vector2(-160, -260), new Vector2(160, 34));
+            string[] gfxNames = { "LOW", "MED", "HIGH" };
+            var gfxPresets = new[] { Core.QualityPreset.LowPower, Core.QualityPreset.Balanced, Core.QualityPreset.High };
+            for (int gi = 0; gi < 3; gi++)
+            {
+                int idx = gi;
+                var b = NewButton($"Gfx_{gfxNames[gi]}", settingsPanel.transform, gfxNames[gi],
+                    new Color(0.42f, 0.78f, 0.95f), out _);
+                SetAnchored(b.GetComponent<RectTransform>(), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0.5f, 1),
+                    new Vector2(20 + gi * 100, -260), new Vector2(90, 44));
+                RoundCorners(b.GetComponent<Image>(), 12f);
+                b.onClick.AddListener(() =>
+                {
+                    var gm = MiniMart.GameManager.Instance;
+                    if (gm != null) gm.ApplyQualityPreset(gfxPresets[idx]);
+                    PlayerPrefs.SetInt("MiniMart_Gfx", idx);
+                    PlayerPrefs.Save();
+                });
+            }
 
             // Version tag (bottom-right of settings panel).
             var verText = NewText("VersionText", settingsPanel.transform, GameVersion, 18, TextAnchor.LowerRight);

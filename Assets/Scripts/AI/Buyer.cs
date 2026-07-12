@@ -75,9 +75,10 @@ namespace MiniMart.AI
                 case Personality.Bargain:   speedMultiplier = 0.90f; queuePatienceSeconds = 45f; break;
                 default:                    speedMultiplier = 1.10f; queuePatienceSeconds = 25f; break;
             }
-            // Buyers are more patient waiting for the store to restock than they are
-            // standing in a checkout queue (reference: they linger for their items).
-            shopPatienceSeconds = queuePatienceSeconds * 2.5f;
+            // Playtest fix: ×2.5 meant up to 112s of motionless waiting at empty
+            // shelves — the store looked full of statues and buyers then left
+            // unpaid in visible waves. Keep a short linger only.
+            shopPatienceSeconds = queuePatienceSeconds * 0.8f;
 
             GenerateBasket();
             OriginalWant.Clear();
@@ -233,20 +234,41 @@ namespace MiniMart.AI
                         return;
                     }
 
-                    // The item's shelf exists but is empty. Reference behaviour: WAIT in the
-                    // store for a restock instead of leaving. Linger and re-check each tick,
-                    // up to a patience budget; a Shelver or the player may refill it.
+                    // The item's shelf exists but is empty.
                     if (HasActiveShelf(needed))
                     {
-                        if (!shownSoldOut)
+                        // Playtest fix: buyers who already have SOMETHING in the
+                        // basket now go pay for it instead of statue-waiting for a
+                        // restock (waves of "wait 2 minutes then leave unpaid"
+                        // made the store look broken and earned nothing).
+                        if (Collected.Count > 0)
                         {
-                            shownSoldOut = true;
-                            Engine.Emote.SoldOut(transform.position);
+                            // fall through to the checkout path below
                         }
-                        shopWait += dt;
-                        if (shopWait < shopPatienceSeconds)
-                            return; // keep waiting near the shelf
-                        // Waited long enough — give up on the remaining items.
+                        else
+                        {
+                            // Nothing collected yet: browse INSIDE the store near
+                            // the wanted shelf (buyers used to wait frozen at the
+                            // road spawn point, looking like a bug), with a short
+                            // patience budget.
+                            if (!shownSoldOut)
+                            {
+                                shownSoldOut = true;
+                                Engine.Emote.SoldOut(transform.position);
+                            }
+                            var emptyShelf = FindAnyShelfObject(needed);
+                            if (emptyShelf != null &&
+                                (transform.position - emptyShelf.transform.position).sqrMagnitude > 9f)
+                            {
+                                SetTarget(emptyShelf.transform.position +
+                                    new Vector3(Random.Range(-1.5f, 1.5f), 0, Random.Range(-1.5f, 1.5f)));
+                                return;
+                            }
+                            shopWait += dt;
+                            if (shopWait < shopPatienceSeconds)
+                                return; // brief linger near the shelf
+                            // Waited long enough — give up on the remaining items.
+                        }
                     }
                 }
 
@@ -314,6 +336,15 @@ namespace MiniMart.AI
             return ItemType.Egg; // fallback (won't match any shelf if basket is empty)
         }
 
+        /// <summary>Any active shelf for the item, stocked or not — used to browse
+        /// near the shelf while waiting for a restock.</summary>
+        private ShopShelf FindAnyShelfObject(ItemType item)
+        {
+            foreach (var s in allShelves)
+                if (s != null && s.gameObject.activeInHierarchy && s.Item == item) return s;
+            return null;
+        }
+
         private ShopShelf FindShelfFor(ItemType item)
         {
             ShopShelf best = null;
@@ -329,9 +360,15 @@ namespace MiniMart.AI
         {
             Economy.CashCounter best = null;
             foreach (var c in counters)
-                if (c.IsUnlocked && (best == null || c.Line.Count < best.Line.Count)) best = c;
+                if (c != null && c.gameObject.activeInHierarchy && c.IsUnlocked && (best == null || c.Line.Count < best.Line.Count)) best = c;
             return best;
         }
+
+        /// <summary>Diagnostic snapshot for live probes (frozen-buyer investigations).</summary>
+        public string DebugState() =>
+            $"hasTarget={hasTarget} wp={(pathWaypoints == null ? -1 : pathWaypoints.Count)}/{currentWaypointIndex} " +
+            $"picking={(pickingShelf != null)} queued={(queuedCounter != null)} waiting={waitingForCounter} " +
+            $"heading={headingToCounter} leaving={leaving} state={State}";
 
         private void LeaveWithoutPaying(string reason)
         {

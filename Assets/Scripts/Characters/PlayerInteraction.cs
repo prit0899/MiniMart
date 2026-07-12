@@ -29,11 +29,17 @@ namespace MiniMart.Characters
         public CornField cornField;
         public AppleOrchard appleOrchard;
         public Machine tomatoCanner;
+        public Machine blender;
+        public Machine mill;
         public Machine oven;
         public Machine doughMixer;
         public Machine milkBottler;
+        public Machine dairy;
+        public Machine stove;
+        public Machine leafProcessor;
         public Machine cornProcessor;
         public Machine cookieLine;
+        public Machine coffeeDispenser; // auto-producer, collect-only
         public HayFeedTrough hayFeedTrough;
         public List<ShopShelf> shelves = new List<ShopShelf>();
         public List<Transform> bins = new List<Transform>();
@@ -187,6 +193,52 @@ namespace MiniMart.Characters
                 }
                 if (cookieLine.OutputReady > 0 && room > 0)
                 { Pick(ItemType.Cookie, cookieLine.CollectFinished()); return; }
+            }
+            // Blender: Tomato → TomatoKetchup
+            if (Near(blender, Radius))
+            {
+                if (CarriedCount(ItemType.Tomato) > 0 && blender.InputQueued < blender.StackCapacity)
+                { MoveToMachine(blender, ItemType.Tomato, 1); return; }
+                if (blender.OutputReady > 0 && room > 0)
+                { Pick(ItemType.TomatoKetchup, blender.CollectFinished()); return; }
+            }
+            // Mill: Wheat → WheatFlour
+            if (Near(mill, Radius))
+            {
+                if (CarriedCount(ItemType.Wheat) > 0 && mill.InputQueued < mill.StackCapacity)
+                { MoveToMachine(mill, ItemType.Wheat, 1); return; }
+                if (mill.OutputReady > 0 && room > 0)
+                { Pick(ItemType.WheatFlour, mill.CollectFinished()); return; }
+            }
+            // Dairy: Milk → Cheese
+            if (Near(dairy, Radius))
+            {
+                if (CarriedCount(ItemType.Milk) > 0 && dairy.InputQueued < dairy.StackCapacity)
+                { MoveToMachine(dairy, ItemType.Milk, 1); return; }
+                if (dairy.OutputReady > 0 && room > 0)
+                { Pick(ItemType.Cheese, dairy.CollectFinished()); return; }
+            }
+            // Stove: Egg → FriedEgg
+            if (Near(stove, Radius))
+            {
+                if (CarriedCount(ItemType.Egg) > 0 && stove.InputQueued < stove.StackCapacity)
+                { MoveToMachine(stove, ItemType.Egg, 1); return; }
+                if (stove.OutputReady > 0 && room > 0)
+                { Pick(ItemType.FriedEgg, stove.CollectFinished()); return; }
+            }
+            // LeafProcessor: Herb → HerbPack
+            if (Near(leafProcessor, Radius))
+            {
+                if (CarriedCount(ItemType.Herb) > 0 && leafProcessor.InputQueued < leafProcessor.StackCapacity)
+                { MoveToMachine(leafProcessor, ItemType.Herb, 1); return; }
+                if (leafProcessor.OutputReady > 0 && room > 0)
+                { Pick(ItemType.HerbPack, leafProcessor.CollectFinished()); return; }
+            }
+            // CoffeeDispenser: auto-producer — player only collects the cups.
+            if (Near(coffeeDispenser, Radius))
+            {
+                if (coffeeDispenser.OutputReady > 0 && room > 0)
+                { Pick(ItemType.Coffee, coffeeDispenser.CollectFinished()); return; }
             }
 
             // 4) Stock the shelf we're standing at with matching carried items.

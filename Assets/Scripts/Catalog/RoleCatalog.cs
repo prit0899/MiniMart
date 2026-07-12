@@ -24,7 +24,9 @@ namespace MiniMart.Catalog
         //      speed rises every level, always fastest. ----
         public static UpgradeCurve PlayerCurve() => Build(
             new[] { 15, 22, 29, 36, 44 },                     // reference video: CARRY 15 -> 44+
-            new[] { 1.30f, 1.45f, 1.60f, 1.75f, 1.90f },      // always above every NPC curve below
+            // Batch 36 retune: with baseSpeed 3.0 this yields 4.2 → 6.3 u/s
+            // across levels, so the Speed upgrade FEELS like an upgrade.
+            new[] { 1.40f, 1.55f, 1.70f, 1.90f, 2.10f },      // always above every NPC curve below
             new[] { 0, 50, 100, 200, 500 });
 
         // ---- Shelver 1 & 2: stack 3 -> 5 over 5 levels, speed rises every upgrade. ----

@@ -171,21 +171,15 @@ namespace MiniMart.Characters
                 Engine.PrimitiveFactory.NewColoredMaterial(arrowYellow);
             restockArrow.SetActive(false);
 
-            // Visuals
+            // Visuals — one distinct silhouette per SKU (egg ellipsoid, tomato w/
+            // stem, ketchup bottle, bread loaf, wheat sheaf...) instead of the
+            // identical tinted cubes that made every shelf look the same.
             itemVisuals = new GameObject[Capacity];
-            Color itemCol = Engine.PrimitiveFactory.ItemColor(Item);
-            Material mat = Engine.PrimitiveFactory.NewColoredMaterial(itemCol);
             for (int i = 0; i < Capacity; i++)
             {
-                var vis = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                vis.transform.SetParent(transform, false);
-                vis.transform.localScale = new Vector3(0.4f, 0.4f, 0.4f);
-                // Stack them in two columns of 5, or just one tall stack
                 float x = (i % 2 == 0) ? -0.25f : 0.25f;
                 float y = 0.2f + (i / 2) * 0.45f;
-                vis.transform.localPosition = new Vector3(x, y, 0);
-                Destroy(vis.GetComponent<Collider>());
-                vis.GetComponent<MeshRenderer>().material = mat;
+                var vis = Engine.PrimitiveFactory.ItemMesh(Item, transform, new Vector3(x, y, 0), 1.0f);
                 vis.SetActive(false);
                 itemVisuals[i] = vis;
             }

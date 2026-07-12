@@ -16,7 +16,9 @@ namespace MiniMart.Catalog
             { ItemType.Apple, 2.0f },
             { ItemType.Tomato, 2.0f },
             { ItemType.Corn, 2.0f },
-            { ItemType.Bread, 6.0f },
+            // Batch 36: $6 → $8. Bread consumes Flour ($3) + Egg ($3), so at $6
+            // the oven added work but zero profit — the only margin-dead chain.
+            { ItemType.Bread, 8.0f },
             { ItemType.Cookie, 8.0f },
             { ItemType.CannedTomato, 5.0f },
             { ItemType.BottledMilk, 4.0f },
@@ -45,31 +47,44 @@ namespace MiniMart.Catalog
         /// <summary>Player level at which an item becomes purchasable/visible to buyers.</summary>
         public static readonly Dictionary<ItemType, int> UnlockLevel = new Dictionary<ItemType, int>
         {
-            { ItemType.Tomato, 1 },
-            { ItemType.Egg, 1 },
-            // Apple unlocks with the Apple Orchard pad (L2, batch 35). Was
-            // temporarily parked at 99 while it had no production source.
-            { ItemType.Apple, 2 },
-            { ItemType.Wheat, 2 },
-            { ItemType.Dough, 2 },
-            { ItemType.Bread, 2 }, 
-            { ItemType.Milk, 3 },
-            { ItemType.BottledMilk, 3 },
-            { ItemType.Corn, 4 },
-            { ItemType.ProcessedCorn, 4 },
-            { ItemType.CannedTomato, 4 },
-            { ItemType.CookieDough, 5 },
-            { ItemType.Cookie, 5 },
+            // SINGLE SOURCE OF TRUTH: these levels mirror the purchase-pad
+            // ladder in SceneBootstrapper exactly. If a pad moves, move the
+            // item here too — a mismatch makes buyers/phone-orders demand
+            // items whose production pad isn't buyable yet.
 
-            // WheatFlour must unlock at/before Bread (its consumer) per the
-            // OutputUnlockGEInput chain check — same level as Wheat.
-            { ItemType.WheatFlour, 2 },
-            { ItemType.TomatoKetchup, 4 },
-            { ItemType.Herb, 4 },
-            { ItemType.HerbPack, 5 },
-            { ItemType.Cheese, 5 },
-            { ItemType.FriedEgg, 4 },
-            { ItemType.Coffee, 6 }
+            // ── Mart 1 "Mini Mart" (L1-5) ──
+            { ItemType.Tomato, 1 },           // starter shelf
+            { ItemType.Egg, 1 },              // L1: Hen Coop pad
+            { ItemType.TomatoKetchup, 2 },    // L2: Ketchup Blender pad
+            { ItemType.Wheat, 3 },            // L3: Wheat Farm pad
+            { ItemType.WheatFlour, 4 },       // L4: Wheat Mill pad
+            { ItemType.Bread, 5 },            // L5: Bread Oven pad
+            { ItemType.FriedEgg, 5 },         // L5: Egg Stove pad
+
+            // ── Mart 2 "MegaMart" (L6-10, SceneBootstrapper2 ladder) ──
+            { ItemType.Milk, 6 },             // L6: Cow Pen pad
+            { ItemType.BottledMilk, 7 },      // L7: Milk Bottler pad
+            { ItemType.Apple, 7 },            // L7: Apple Orchard pad
+            { ItemType.Corn, 7 },             // L7: Corn Field pad
+            { ItemType.ProcessedCorn, 8 },    // L8: Corn Processor pad
+            { ItemType.Herb, 8 },             // L8: Herb Patch pad
+            { ItemType.Cheese, 8 },           // L8: Cheese Dairy pad
+            { ItemType.HerbPack, 9 },         // L9: Leaf Unit pad
+            { ItemType.Coffee, 10 },          // L10: Coffee Bar pad
+
+            // Retired chains are deliberately ABSENT: a missing key means
+            // IsUnlocked() is false forever, keeping them out of every buyer/
+            // phone-order pool. The Retired set below documents this for the
+            // validator.
+        };
+
+        /// <summary>Items whose production chains are retired from the two-mart
+        /// split (their recipes would need ingredients from the other mart).
+        /// They keep a BasePrice (old saves may still hold stock) but have no
+        /// UnlockLevel entry, no shelves, and no purchase pads.</summary>
+        public static readonly HashSet<ItemType> Retired = new HashSet<ItemType>
+        {
+            ItemType.Dough, ItemType.CannedTomato, ItemType.CookieDough, ItemType.Cookie,
         };
 
         public const int CashCounter1UnlockLevel = 1; // available by default
@@ -77,13 +92,11 @@ namespace MiniMart.Catalog
         // checked out and money flows (a closed L1 counter left buyers queuing forever
         // then leaving unpaid). The player can still stand at the till for a 3x speed boost.
         public const int Cashier1AssignableLevel = 1;
-        // Batch 35: was L4; the buyer spawn rate scales 0.9^level so a single
-        // counter overflowed hard at L3 — the mid-game frustration valley.
-        public const int CashCounter2UnlockLevel = 3; // second counter + its cashier
-        // Reference image §Cashier Section lists FOUR registers total: Main + Expanded 1/2 + Register 3/4.
-        // Counter 3 opens mid-late game, Counter 4 is the final "big store" milestone.
-        public const int CashCounter3UnlockLevel = 5;
-        public const int CashCounter4UnlockLevel = 6;
+        // Batch 39 reconcile: the Counter 2 pad sells at L3 (queue-overflow fix,
+        // batch 35) — this constant MUST match or the bought counter stays closed.
+        public const int CashCounter2UnlockLevel = 3;
+        public const int CashCounter3UnlockLevel = 9;  // Mart 2
+        public const int CashCounter4UnlockLevel = 10;  // Mart 2 endgame
 
         public const float MinBundlePrice = 1.00f; // floor: no full basket/bundle should price under $1
 

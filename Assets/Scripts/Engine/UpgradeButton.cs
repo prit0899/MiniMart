@@ -171,13 +171,30 @@ namespace MiniMart.UI
 
             for (int i = 0; i < 3; i++)
             {
+                // Scrollable viewport per tab. The Workers tab alone stacks ~11
+                // 56px rows into what was a 560px shell — rows visibly spilled
+                // out of the panel (see LIVE_ref4 capture). ScrollRect +
+                // RectMask2D + ContentSizeFitter makes ANY row count fit, so
+                // future machines/animals can never overflow again.
+                var viewport = new GameObject($"Viewport_{tabNames[i]}",
+                    typeof(RectTransform), typeof(RectMask2D), typeof(Image));
+                viewport.transform.SetParent(transform, false);
+                var vrt = viewport.GetComponent<RectTransform>();
+                vrt.anchorMin = new Vector2(0, 0);
+                vrt.anchorMax = new Vector2(1, 1);
+                vrt.offsetMin = new Vector2(14, 14);
+                vrt.offsetMax = new Vector2(-14, -140);
+                // Near-invisible image so the viewport is a raycast target for drags.
+                viewport.GetComponent<Image>().color = new Color(0, 0, 0, 0.01f);
+
                 var content = new GameObject($"Content_{tabNames[i]}", typeof(RectTransform));
-                content.transform.SetParent(transform, false);
+                content.transform.SetParent(viewport.transform, false);
                 var crt = content.GetComponent<RectTransform>();
-                crt.anchorMin = new Vector2(0, 0);
+                crt.anchorMin = new Vector2(0, 1);
                 crt.anchorMax = new Vector2(1, 1);
-                crt.offsetMin = new Vector2(14, 14);
-                crt.offsetMax = new Vector2(-14, -140);
+                crt.pivot = new Vector2(0.5f, 1f);
+                crt.offsetMin = Vector2.zero;
+                crt.offsetMax = Vector2.zero;
 
                 var vlg = content.AddComponent<VerticalLayoutGroup>();
                 vlg.childAlignment = TextAnchor.UpperCenter;
@@ -185,6 +202,17 @@ namespace MiniMart.UI
                 vlg.childControlHeight = false;
                 vlg.childControlWidth = true;
                 vlg.childForceExpandHeight = false;
+
+                var fitter = content.AddComponent<ContentSizeFitter>();
+                fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+                var scroll = viewport.AddComponent<ScrollRect>();
+                scroll.content = crt;
+                scroll.viewport = vrt;
+                scroll.horizontal = false;
+                scroll.vertical = true;
+                scroll.movementType = ScrollRect.MovementType.Clamped;
+                scroll.scrollSensitivity = 24f;
 
                 tabContents.Add(content);
             }
@@ -214,8 +242,11 @@ namespace MiniMart.UI
 
         private void ShowTab(int index)
         {
+            // Toggle the parent VIEWPORT (contents are nested inside ScrollRect
+            // viewports now) — leaving all three viewports active would stack
+            // their raycast targets and swallow drags on the visible tab.
             for (int i = 0; i < tabContents.Count; i++)
-                tabContents[i].SetActive(i == index);
+                tabContents[i].transform.parent.gameObject.SetActive(i == index);
             for (int i = 0; i < tabButtons.Count; i++)
             {
                 var c = tabButtons[i].color;

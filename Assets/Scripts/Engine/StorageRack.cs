@@ -70,20 +70,15 @@ namespace MiniMart.Engine
             }
             go.AddComponent<Billboard>();
 
-            // Visuals to showcase items like ShopShelf
+            // Visuals to showcase items like ShopShelf — distinct silhouette per
+            // SKU via ItemMesh so every rack reads at a glance.
             itemVisuals = new GameObject[10]; // max 10 visuals
-            Color itemCol = Engine.PrimitiveFactory.ItemColor(Item);
-            Material mat = Engine.PrimitiveFactory.NewColoredMaterial(itemCol);
             for (int i = 0; i < itemVisuals.Length; i++)
             {
-                var vis = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                vis.transform.SetParent(transform, false);
-                vis.transform.localScale = new Vector3(0.4f, 0.4f, 0.4f);
                 float x = (i % 2 == 0) ? -0.25f : 0.25f;
                 float y = 0.2f + (i / 2) * 0.45f;
-                vis.transform.localPosition = new Vector3(x, y + 0.15f, 0.35f); // piled in the crate
-                Destroy(vis.GetComponent<Collider>());
-                vis.GetComponent<MeshRenderer>().material = mat;
+                var vis = Engine.PrimitiveFactory.ItemMesh(Item, transform,
+                    new Vector3(x, y + 0.15f, 0.35f), 1.0f); // piled in the crate
                 vis.SetActive(false);
                 itemVisuals[i] = vis;
             }

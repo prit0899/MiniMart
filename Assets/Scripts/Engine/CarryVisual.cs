@@ -20,6 +20,7 @@ namespace MiniMart.UI
         private CharacterBase character;
         // Player carry reaches 44 at max level — pool that many icons.
         private GameObject[] icons = new GameObject[44];
+        private Core.ItemType[] iconTypes = new Core.ItemType[44];
         private int lastCount = -1;
         private Color lastColor = Color.clear;
 
@@ -51,6 +52,7 @@ namespace MiniMart.UI
                         mr.material = Engine.PrimitiveFactory.NewColoredMaterial(Color.white);
                 }
                 icons[i].SetActive(false);
+                iconTypes[i] = (Core.ItemType)(-1);
             }
 
             BuildMaxPill();
@@ -99,30 +101,76 @@ namespace MiniMart.UI
         {
             if (character == null) return;
             int count = Mathf.Min(character.CarryCount, icons.Length);
-            if (count == lastCount && character.CarryColor == lastColor) return;
+
+            // Build per-item color list for the player (mixed stack support).
+            // For NPCs (no PlayerInteraction), fall back to the single CarryColor.
+            System.Collections.Generic.List<Core.ItemType> itemList = null;
+            var pi = GetComponent<PlayerInteraction>();
+            if (pi != null)
+                itemList = pi.GetCarriedItems();
+
+            // Detect whether we need to redraw: count changed, color changed, or
+            // the item composition changed (for mixed stacks).
+            bool needsRedraw = count != lastCount || character.CarryColor != lastColor;
+            if (!needsRedraw && itemList != null)
+            {
+                // Quick hash: if the list length differs from lastCount we already
+                // know we need to redraw. Otherwise skip — the full per-frame
+                // comparison is cheap enough at ≤44 items.
+                needsRedraw = true; // always redraw when player has a mixed stack
+            }
+            if (!needsRedraw) return;
+
             lastCount = count;
             lastColor = character.CarryColor;
 
             // Single tall column: cube i sits at StackOffset + (0, i*spacing, 0).
             for (int i = 0; i < icons.Length; i++)
             {
-                if (icons[i] == null) continue;
                 bool show = i < count;
-                icons[i].SetActive(show);
-                if (show)
+                if (!show)
                 {
-                    icons[i].transform.localPosition =
-                        StackOffset + new Vector3(0f, i * IconSpacing, 0f);
+                    if (icons[i] != null) icons[i].SetActive(false);
+                    continue;
+                }
 
-                    // Slight per-cube wobble in scale to break up the perfect column and
-                    // read as hand-stacked items — cheap "juice" without animation cost.
-                    float jitter = 1f + Mathf.Sin(i * 0.9f) * 0.05f;
-                    icons[i].transform.localScale =
-                        new Vector3(IconSize * jitter, IconSize, IconSize * jitter);
+                // If we know the exact item (Player), and the mesh is missing or out of date:
+                if (itemList != null && i < itemList.Count)
+                {
+                    Core.ItemType type = itemList[i];
+                    if (iconTypes[i] != type || icons[i] == null)
+                    {
+                        if (icons[i] != null) Destroy(icons[i]);
+                        icons[i] = Engine.PrimitiveFactory.ItemMesh(type, transform, Vector3.zero, IconSize * 2f);
+                        iconTypes[i] = type;
+                    }
+                }
+                else if (icons[i] == null) // fallback for NPCs without itemList
+                {
+                    icons[i] = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    icons[i].transform.SetParent(transform, false);
+                    icons[i].transform.localScale = new Vector3(IconSize, IconSize, IconSize);
+                    Destroy(icons[i].GetComponent<Collider>());
+                    var mat = Engine.PrimitiveFactory.NewColoredMaterial(Color.white);
+                    icons[i].GetComponent<MeshRenderer>().material = mat;
+                    iconTypes[i] = (Core.ItemType)(-1);
+                }
 
+                icons[i].SetActive(true);
+                icons[i].transform.localPosition = StackOffset + new Vector3(0f, i * IconSpacing, 0f);
+
+                // Slight wobble for cubes (skip wobble on complex meshes to avoid distortion, or apply lightly)
+                float jitter = 1f + Mathf.Sin(i * 0.9f) * 0.05f;
+                if (itemList == null || i >= itemList.Count)
+                {
+                    icons[i].transform.localScale = new Vector3(IconSize * jitter, IconSize, IconSize * jitter);
                     var mr = icons[i].GetComponent<MeshRenderer>();
-                    if (mr != null)
-                        mr.material.color = character.CarryColor;
+                    if (mr != null) mr.material.color = character.CarryColor;
+                }
+                else
+                {
+                    // ItemMesh is already scaled, just apply local rotation jitter for juice
+                    icons[i].transform.localRotation = Quaternion.Euler(0f, i * 15f + Mathf.Sin(Time.time * 2f + i) * 10f, 0f);
                 }
             }
 
@@ -132,7 +180,7 @@ namespace MiniMart.UI
                 maxPill.SetActive(full);
                 if (full)
                 {
-                    // Sit above the top cube (count is 1-indexed against stack layer 0).
+                    // Sit above the top item
                     maxPill.transform.localPosition =
                         StackOffset + new Vector3(0f, count * IconSpacing + 0.35f, 0f);
                 }

@@ -72,15 +72,15 @@ namespace MiniMart
         // were conflated, so buying a personal upgrade suddenly unlocked bread.
         public int StoreLevel { get; private set; } = 1;
         public int StoreXp { get; private set; }
-        /// <summary>Content stops at L6 (last pads: Coffee/Counter 4/Next Mart).
+        /// <summary>Content stops at L10 (Mart 2 endgame: Coffee/Counter 4).
         /// Without a cap, XpToNextLevel grew forever with nothing to unlock —
         /// an empty treadmill (batch-34 playthrough finding).</summary>
-        public const int MaxStoreLevel = 6;
+        public const int MaxStoreLevel = 10;
         public bool IsMaxLevel => StoreLevel >= MaxStoreLevel;
         /// <summary>Lifetime checkouts this session+save — feeds the rotating
         /// mini-goals in Retention.cs. Incremented by CashCounter.ProcessFront.</summary>
         [System.NonSerialized] public int CustomersServed;
-        public int XpToNextLevel => 100 * StoreLevel; // L1->2: 100, L2->3: 200, ...
+        public int XpToNextLevel => 80 * StoreLevel; // L1->2: 80, L2->3: 160, ... (softer curve for 10 levels)
 
         // Global "Crop Speed" upgrade (in-world Hub pad §"Crop Speed Upgrade Spot").
         // Multiplies growth rate on tomato / wheat / corn / herb farms. Levels 1-5,
@@ -335,7 +335,44 @@ namespace MiniMart
 
         public void MarkPadPurchased(string label)
         {
-            if (!string.IsNullOrEmpty(label)) purchasedPads.Add(label);
+            if (string.IsNullOrEmpty(label)) return;
+            purchasedPads.Add(label);
+
+            // Batch 40 onboarding: a plain-language "what now?" hint the moment
+            // each station is bought. Guarded by timeSinceLevelLoad so the
+            // save-restore replay at boot doesn't fire a toast barrage.
+            if (Time.timeSinceLevelLoad > 5f)
+            {
+                string hint = label switch
+                {
+                    "Hen Coop"        => "Chickens lay eggs — pick them up and shelve them!",
+                    "Hire Farmer"     => "Your farmer now harvests crops for you!",
+                    "Hire Shelver"    => "Your shelver keeps the shelves stocked!",
+                    "Hire Shelver B"  => "Your shelver keeps the shelves stocked!",
+                    "Hire Chef"       => "Your chef runs the machines for you!",
+                    "Ketchup Blender" => "Carry tomatoes to the Blender to make ketchup!",
+                    "Wheat Farm"      => "Harvest wheat — the Mill turns it into flour!",
+                    "Wheat Mill"      => "Carry wheat to the Mill to make flour!",
+                    "Bread Oven"      => "The Oven bakes flour + eggs into bread!",
+                    "Egg Stove"       => "Carry eggs to the Stove to fry them!",
+                    "Cow Pen"         => "Feed the cow hay, then collect the milk!",
+                    "Hay Trough"      => "Carry wheat here to feed the cow!",
+                    "Milk Bottler"    => "Carry milk to the Bottler to bottle it!",
+                    "Cheese Dairy"    => "Carry milk to the Dairy to make cheese!",
+                    "Corn Field"      => "Harvest corn when the cobs turn yellow!",
+                    "Corn Processor"  => "Carry corn here to process it!",
+                    "Apple Orchard"   => "Pick apples from the trees!",
+                    "Herb Patch"      => "Harvest herbs when the bushes fill out!",
+                    "Leaf Unit"       => "Carry herbs here to pack them!",
+                    "Coffee Bar"      => "Fresh coffee brews itself — collect the cups!",
+                    "MegaMart"        => "Stand on the blue pad to visit your MegaMart!",
+                    "Counter 2"       => "A second till opens — shorter queues!",
+                    "Counter 3"       => "Another till — the crowd flows faster!",
+                    "Counter 4"       => "Full checkout row — maximum throughput!",
+                    _                 => null,
+                };
+                if (hint != null) Toast.Show(hint, 5f);
+            }
         }
 
         /// <summary>Human-readable report shown once by the HUD; null when nothing pending.</summary>

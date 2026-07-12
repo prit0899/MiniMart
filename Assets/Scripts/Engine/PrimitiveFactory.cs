@@ -1350,6 +1350,141 @@ namespace MiniMart.Engine
             }
         }
 
+        /// <summary>One distinct primitive silhouette per SKU, used by shelves,
+        /// storage racks and any other stock display. Colour alone was the only
+        /// differentiator before (identical tinted cubes) — weak at isometric
+        /// distance and useless for colourblind players. Shape + colour together
+        /// give every item a recognisable identity everywhere it appears.
+        /// Returns a root GameObject so callers can toggle/destroy as one unit.</summary>
+        public static GameObject ItemMesh(MiniMart.Core.ItemType item, Transform parent, Vector3 localPos, float s = 1f)
+        {
+            var root = new GameObject($"Item_{item}");
+            root.transform.SetParent(parent, false);
+            root.transform.localPosition = localPos;
+            var t = root.transform;
+            Color col = ItemColor(item);
+
+            switch (item)
+            {
+                case Core.ItemType.Egg: // white ellipsoid
+                    Part(PrimitiveType.Sphere, t, Vector3.zero, new Vector3(0.30f, 0.40f, 0.30f) * s, col);
+                    break;
+
+                case Core.ItemType.Tomato: // red sphere + green stem nub
+                    Part(PrimitiveType.Sphere, t, Vector3.zero, new Vector3(0.38f, 0.34f, 0.38f) * s, col);
+                    Part(PrimitiveType.Cube, t, new Vector3(0, 0.20f, 0) * s,
+                        new Vector3(0.08f, 0.10f, 0.08f) * s, new Color(0.25f, 0.60f, 0.25f));
+                    break;
+
+                case Core.ItemType.TomatoKetchup: // slim red bottle + white cap
+                    Part(PrimitiveType.Cylinder, t, Vector3.zero, new Vector3(0.20f, 0.22f, 0.20f) * s, col);
+                    Part(PrimitiveType.Cylinder, t, new Vector3(0, 0.28f, 0) * s,
+                        new Vector3(0.10f, 0.07f, 0.10f) * s, new Color(0.95f, 0.95f, 0.92f));
+                    break;
+
+                case Core.ItemType.Bread: // tan loaf w/ lighter crust cap
+                    Part(PrimitiveType.Cube, t, Vector3.zero, new Vector3(0.46f, 0.24f, 0.28f) * s, col);
+                    Part(PrimitiveType.Cube, t, new Vector3(0, 0.14f, 0) * s,
+                        new Vector3(0.42f, 0.10f, 0.24f) * s, new Color(0.92f, 0.76f, 0.48f));
+                    break;
+
+                case Core.ItemType.Wheat: // sheaf of three thin stalks
+                    Part(PrimitiveType.Cylinder, t, new Vector3(-0.08f, 0, 0) * s, new Vector3(0.07f, 0.24f, 0.07f) * s, col);
+                    Part(PrimitiveType.Cylinder, t, new Vector3(0.08f, 0, 0.03f) * s, new Vector3(0.07f, 0.22f, 0.07f) * s, col);
+                    Part(PrimitiveType.Cylinder, t, new Vector3(0, 0.02f, -0.06f) * s, new Vector3(0.07f, 0.26f, 0.07f) * s, col);
+                    break;
+
+                case Core.ItemType.WheatFlour: // white sack w/ tied top
+                    Part(PrimitiveType.Cube, t, Vector3.zero, new Vector3(0.34f, 0.32f, 0.26f) * s, col);
+                    Part(PrimitiveType.Sphere, t, new Vector3(0, 0.20f, 0) * s,
+                        new Vector3(0.14f, 0.10f, 0.14f) * s, new Color(0.85f, 0.82f, 0.76f));
+                    break;
+
+                case Core.ItemType.Milk: // white carton w/ blue band
+                    Part(PrimitiveType.Cube, t, Vector3.zero, new Vector3(0.26f, 0.40f, 0.26f) * s, col);
+                    Part(PrimitiveType.Cube, t, new Vector3(0, 0.06f, 0) * s,
+                        new Vector3(0.28f, 0.10f, 0.28f) * s, new Color(0.35f, 0.55f, 0.90f));
+                    break;
+
+                case Core.ItemType.BottledMilk: // bottle: white cylinder + narrow neck
+                    Part(PrimitiveType.Cylinder, t, Vector3.zero, new Vector3(0.22f, 0.18f, 0.22f) * s, col);
+                    Part(PrimitiveType.Cylinder, t, new Vector3(0, 0.24f, 0) * s, new Vector3(0.12f, 0.08f, 0.12f) * s, col);
+                    break;
+
+                case Core.ItemType.Cheese: // yellow wedge (45° rotated cube)
+                {
+                    var wedge = Part(PrimitiveType.Cube, t, Vector3.zero, new Vector3(0.36f, 0.36f, 0.30f) * s, col);
+                    wedge.transform.localRotation = Quaternion.Euler(0, 0, 45f);
+                    break;
+                }
+
+                case Core.ItemType.Cookie: // flat tan disc + chip dots
+                    Part(PrimitiveType.Cylinder, t, Vector3.zero, new Vector3(0.36f, 0.05f, 0.36f) * s, col);
+                    Part(PrimitiveType.Sphere, t, new Vector3(0.08f, 0.05f, 0.05f) * s,
+                        new Vector3(0.06f, 0.04f, 0.06f) * s, new Color(0.35f, 0.22f, 0.12f));
+                    Part(PrimitiveType.Sphere, t, new Vector3(-0.09f, 0.05f, -0.04f) * s,
+                        new Vector3(0.06f, 0.04f, 0.06f) * s, new Color(0.35f, 0.22f, 0.12f));
+                    break;
+
+                case Core.ItemType.CannedTomato: // grey tin + red label band
+                    Part(PrimitiveType.Cylinder, t, Vector3.zero, new Vector3(0.26f, 0.18f, 0.26f) * s,
+                        new Color(0.75f, 0.75f, 0.78f));
+                    Part(PrimitiveType.Cylinder, t, Vector3.zero, new Vector3(0.27f, 0.08f, 0.27f) * s, col);
+                    break;
+
+                case Core.ItemType.Coffee: // dark cup + saucer
+                    Part(PrimitiveType.Cylinder, t, new Vector3(0, 0.06f, 0) * s, new Vector3(0.22f, 0.12f, 0.22f) * s, col);
+                    Part(PrimitiveType.Cylinder, t, new Vector3(0, -0.06f, 0) * s,
+                        new Vector3(0.32f, 0.02f, 0.32f) * s, new Color(0.92f, 0.90f, 0.86f));
+                    break;
+
+                case Core.ItemType.Apple: // red sphere, slightly taller than tomato, brown stem
+                    Part(PrimitiveType.Sphere, t, Vector3.zero, new Vector3(0.32f, 0.36f, 0.32f) * s, col);
+                    Part(PrimitiveType.Cube, t, new Vector3(0, 0.22f, 0) * s,
+                        new Vector3(0.05f, 0.10f, 0.05f) * s, new Color(0.45f, 0.30f, 0.15f));
+                    break;
+
+                case Core.ItemType.Corn: // yellow cob + green husk leaf
+                    Part(PrimitiveType.Capsule, t, Vector3.zero, new Vector3(0.18f, 0.20f, 0.18f) * s, col);
+                    Part(PrimitiveType.Cube, t, new Vector3(0.10f, -0.08f, 0) * s,
+                        new Vector3(0.08f, 0.26f, 0.04f) * s, new Color(0.35f, 0.68f, 0.30f));
+                    break;
+
+                case Core.ItemType.Herb: // leafy green sprig
+                    Part(PrimitiveType.Sphere, t, Vector3.zero, new Vector3(0.26f, 0.18f, 0.26f) * s, col);
+                    Part(PrimitiveType.Sphere, t, new Vector3(0.10f, 0.10f, 0.05f) * s, new Vector3(0.16f, 0.12f, 0.16f) * s, col);
+                    break;
+
+                case Core.ItemType.HerbPack: // green box w/ white wrap band
+                    Part(PrimitiveType.Cube, t, Vector3.zero, new Vector3(0.34f, 0.20f, 0.26f) * s, col);
+                    Part(PrimitiveType.Cube, t, Vector3.zero, new Vector3(0.10f, 0.22f, 0.28f) * s,
+                        new Color(0.95f, 0.95f, 0.92f));
+                    break;
+
+                case Core.ItemType.FriedEgg: // white disc + yolk dome
+                    Part(PrimitiveType.Cylinder, t, Vector3.zero, new Vector3(0.34f, 0.03f, 0.34f) * s,
+                        new Color(0.97f, 0.96f, 0.92f));
+                    Part(PrimitiveType.Sphere, t, new Vector3(0, 0.05f, 0) * s, new Vector3(0.16f, 0.10f, 0.16f) * s, col);
+                    break;
+
+                case Core.ItemType.Dough: // pale rounded blob
+                case Core.ItemType.CookieDough:
+                    Part(PrimitiveType.Sphere, t, Vector3.zero, new Vector3(0.34f, 0.24f, 0.34f) * s, col);
+                    break;
+
+                case Core.ItemType.ProcessedCorn: // tin w/ yellow band
+                    Part(PrimitiveType.Cylinder, t, Vector3.zero, new Vector3(0.26f, 0.18f, 0.26f) * s,
+                        new Color(0.75f, 0.75f, 0.78f));
+                    Part(PrimitiveType.Cylinder, t, Vector3.zero, new Vector3(0.27f, 0.08f, 0.27f) * s, col);
+                    break;
+
+                default: // safety net for future items
+                    Part(PrimitiveType.Cube, t, Vector3.zero, new Vector3(0.34f, 0.34f, 0.34f) * s, col);
+                    break;
+            }
+            return root;
+        }
+
         /// <summary>Raw items use crate display, processed items use shelf unit.</summary>
         public static bool IsRawItem(MiniMart.Core.ItemType item)
         {

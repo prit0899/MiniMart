@@ -110,10 +110,15 @@ namespace MiniMart.Engine
                 camForward.Normalize();
                 camRight.Normalize();
 
-                // Analog: partial stick deflection = partial speed, like the reference game.
+                // Analog: partial stick deflection = partial speed, like the reference
+                // game — but shaped with a smoothstep so the character commits to full
+                // speed by ~70% deflection instead of feeling mushy at mid-stick.
                 Vector3 dir = (camForward * v + camRight * h).normalized;
-                float throttle = Mathf.Clamp01(smoothedInput.magnitude);
-                Vector3 next = player.transform.position + dir * player.CurrentSpeed * throttle * Time.deltaTime;
+                float raw01 = Mathf.Clamp01(smoothedInput.magnitude);
+                float throttle = raw01 * raw01 * (3f - 2f * raw01); // smoothstep
+                // Dash skill: short speed burst on the DASH button (see TriggerDash).
+                float dash = Time.time < dashUntil ? 1.6f : 1f;
+                Vector3 next = player.transform.position + dir * player.CurrentSpeed * throttle * dash * Time.deltaTime;
 
                 // Keep player inside the world. These bounds MUST match the
                 // pathfinder grid built in SceneBootstrapper (origin (-50,0,0),
@@ -209,6 +214,21 @@ namespace MiniMart.Engine
 
         /// <summary>Called by the runtime HUD builder after this component's Awake has already run,
         /// to attach on-screen controls and register the net button click.</summary>
+        // ── Dash skill (batch 36) ────────────────────────────────────────────
+        // Short 1.6x speed burst on demand; 2s duration, 5s cooldown. Gives the
+        // movement loop an active verb without complicating steering.
+        private float dashUntil = -999f;
+        private float dashReadyAt;
+        public bool DashReady => Time.time >= dashReadyAt;
+
+        public void TriggerDash()
+        {
+            if (!DashReady) return;
+            dashUntil = Time.time + 2f;
+            dashReadyAt = Time.time + 5f;
+            AudioFx.Sale(); // light whoosh-ish feedback from the existing bus
+        }
+
         public void BindOnScreenControls(Joystick joystick, UnityEngine.UI.Button netButton)
         {
             MobileJoystick = joystick;
@@ -241,6 +261,26 @@ namespace MiniMart.Engine
             if (GameManager.Instance == null) return;
             if (player.IsPaused) GameManager.Instance.Resume();
             else GameManager.Instance.Pause();
+        }
+    }
+
+    /// <summary>
+    /// Greys the DASH button out while the dash skill is on cooldown so its
+    /// state is always readable at a glance (batch 36).
+    /// </summary>
+    public class DashCooldownTint : MonoBehaviour
+    {
+        public PlayerInputHandler Input;
+        public UnityEngine.UI.Image Target;
+        private Color readyColor;
+        private bool cached;
+
+        private void Update()
+        {
+            if (Input == null || Target == null) return;
+            if (!cached) { readyColor = Target.color; cached = true; }
+            var dim = readyColor; dim.a = 0.35f;
+            Target.color = Input.DashReady ? readyColor : dim;
         }
     }
 

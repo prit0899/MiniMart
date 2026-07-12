@@ -61,6 +61,144 @@ Rendered the live game camera to PNGs and compared against the `Refer/` My Mini 
       as out of scope for now.
 - [ ] Live validation of the whole batch pending Unity MCP re-approval.
 
+## Batch 39 — two-mart split (separate scene) + gentle ladder + full QA pass
+User design: split the mall into two PLACES like the reference's "GO TO
+Cafe Mart" (second Unity scene, not a shared map), and slow the unlock
+pacing to 1-3 things per level.
+- [x] **Reconciled two competing MegaMart implementations.** A parallel
+      session had already created `MegaMart.unity` + `SceneBootstrapper2`
+      + `SceneTransition` (dwell-to-travel pads, both scenes in Build
+      Settings, MaxStoreLevel 10). My in-file `isMegaMart` branch was the
+      duplicate — deleted; SB2 is the sole MegaMart owner.
+- [x] **Fixed SB2's dead machines**: its Dairy had NO milk source anywhere
+      in the game (cow pen existed in neither mart). Moved the full milk
+      chain into MegaMart (cow pen + hay trough + milk bottler + racks +
+      interact/gm wiring). Retired Tomato Canner + Cookie Line from SB2 —
+      their raw inputs (tomato/wheat) only exist in Mart 1, so they could
+      never be loaded (the "machine refuses input" playtest bug pattern).
+- [x] **Ladder pacing (verified live by level-walk)**: Mart 1 — L1: 3
+      (Farmer/Coop/Shelver), L2: 1 (Ketchup Blender), L3: 2 (Wheat Farm/
+      Counter 2), L4: 2 (Mill/Chef), L5: 2 (Oven/Stove), L6: 1 (MegaMart
+      door, $500). MegaMart — L6: 3 (Cow/Hay/Shelver B), L7: 3 (Bottler/
+      Orchard/Corn), L8: 3 (Corn Proc/Herb/Dairy), L9: 2 (Leaf/Counter 3),
+      L10: 2 (Coffee/Counter 4). Exactly the user's 1-3 rule.
+- [x] **Catalog = single source of truth**: UnlockLevel mirrors the pad
+      ladder exactly; retired chains (Dough/CannedTomato/CookieDough/
+      Cookie) have NO UnlockLevel entry (missing key = permanently out of
+      buyer/phone pools) and are declared in `PriceCatalog.Retired`, which
+      the validator honors. `CashCounter2UnlockLevel` re-aligned 5→3 (pad
+      sells at L3; mismatch left a bought counter closed).
+- [x] **QA pass (tester-style, all live)**: validator 44,765/0 (Mart 1)
+      and 45,033/0 (MegaMart); level-walk pad-reveal counts match ladder;
+      UI overlap scan found only SafeArea container false-positives;
+      FULL TRAVEL LOOP played honestly — earned pad purchase → stand on
+      travel pad → MegaMart loads → L6/$110 state carried → bought Cow Pen
+      (cow appears) → return pad → back in Mart 1. Zero console errors.
+      Captures: LIVE_v39_megamart.png.
+- [x] QA notes (by-design, not bugs): raw Milk/Wheat have racks but no
+      retail shelf (ingredients; Bottled Milk/Bread are the SKUs); gated
+      sources report inactive until purchased.
+- [ ] Not covered by editor QA: real touch drag on the upgrade scroll,
+      device performance, scene-load hitch on low-end phones.
+
+## Batch 38 — real-playtest bug sweep (6 findings, all probed live)
+User played from scratch and reported 6 issues. Each was probed in live
+play mode before fixing; several were already fixed by parallel edits and
+needed only verification:
+- [x] **Phone order demanded locked items (egg at L1)** — the active-shelf
+      filter + AllShelves wiring already existed in-tree; live probe shows
+      `L1 orderPool=[Tomato]` only. The egg order came from the pre-fix
+      build. First-order delay is 180s (was 15s at the time of playtest).
+- [x] **Van crashed into cash counters** — pickup spot had been INSIDE the
+      store (x=-18 vs west wall x=-20), parked on top of the counters at
+      x=-15. Already moved to (-23,55) outside the delivery gate; drive-in
+      line from (-48,70) never crosses the wall plane.
+- [x] **Blender/Mill refused input** — they were chef-only; before hiring
+      the chef (L3) an unlocked machine was dead furniture. Player
+      interaction blocks for blender/mill/dairy/stove/leaf existed from
+      parallel edits; added the missing CoffeeDispenser collect block +
+      field + wiring.
+- [x] **Buyers left without paying (THE big one)** — live probe: 12/12
+      buyers frozen, counter line empty, 3 served/60s. Root cause was NOT
+      checkout code (cc1 open ✓): the first wave bought out the 20-tomato
+      shelf and every later buyer sat in the "wait for restock" branch for
+      up to 112s (patience ×2.5), then left unpaid — statue crowds +
+      unpaid exits, exactly as reported. Fixes: (1) buyers holding ≥1 item
+      now checkout immediately when their next item is out of stock;
+      (2) empty-handed waiters browse NEAR the shelf instead of freezing
+      at the road spawn; (3) shop patience ×2.5 → ×0.8; (4) spawn pressure
+      level-scaled: intervals 1.5-3s → 4-7s ×0.75^level, crowd cap
+      4+2×level (6 at L1 → 12). Post-fix probe: throughput doubled,
+      6/6 buyers moving (was 0/12).
+- [x] **Carry stack showed single-color rects** — pre-batch-36 build;
+      probed live: 4 eggs + 4 tomatoes renders `Item_Egg ×4, Item_Tomato
+      ×4` as distinct meshes (capture: LIVE_v38_carrystack.png). Added
+      `Buyer.DebugState()` diagnostic used by the probes.
+- [ ] **"Split the mall into two smaller marts"** — roadmap design, not
+      implemented this batch: group SKUs into Mart 1 (tomato/egg/wheat
+      chains) and Mart 2 (milk/corn/herb/coffee chains) connected by the
+      road; the existing $880 "Next Mart" pad becomes the door to Mart 2.
+      Reuses zoning + pads; biggest lift is a second camera/pathfinder
+      region and per-mart buyer spawns.
+
+## Batch 37 — LIVE verification of batches 27-36 + user-review UX fixes
+Unity MCP re-approved; first live run of ten accumulated batches. All
+evidence from real play-mode runs on a wiped save (true new-player state):
+- [x] **Wrong scene trap found**: the editor had the Genies DemoMode sample
+      scene open (from the SDK Bootstrap Wizard) — explained "empty" first
+      sweep + NAF shader errors. Re-opened Assets/Game.unity.
+- [x] **GeniesPlayerSkin now skips cleanly on Built-in RP** (the SDK's NAF
+      renderer needs URP shaders; it spammed errors and failed anyway).
+      One log line, primitive body kept, zero errors.
+- [x] **Verified live**: 3/28 pads visible at L1 (level-gating ✓, matches
+      "locked items hidden until level reached"); joystick ghost gone
+      (0 enabled images pre-touch); tutorial banner, goal chip, phone
+      timer chip, DASH button all present; daily bonus paid ($10→$35 on
+      fresh boot); phone-order banner shows the new purple layout with
+      LEVEL-SCALED value ($60 at L1, was up to $300); tomato shelf renders
+      shaped items; upgrade panel opens with 3 tabs + ScrollRect viewports
+      and rows clip INSIDE the shell (mask verified in capture).
+- [x] **Stale validator expectation fixed**: `Counter2.UnlocksAt4` → 3
+      (tracks the batch-35 design change). Validator: **51,097 pass /
+      0 fail**, 0 console errors/warnings on boot.
+- [x] **User review "map too big, can't find tomato farm"**: giant floating
+      ItemMesh locator icons (3.5x scale, bob + slow spin via `LocatorBob`)
+      above all 7 production sources; parented to the source so gated ones
+      stay hidden until unlocked. Verified in capture: tomato locator
+      readable from across the lot.
+- [x] Captures: `LIVE_v37_freshstart/upgradepanel_scroll/shelf_shapes/
+      locators.png` in Assets/Design/captures/.
+- [ ] "Not addictive/attractive" — partially addressed (goals, daily bonus,
+      dash, VFX/BGM, item shapes all now verified live); next lever is the
+      Layer Lab sprite import pass + character pack.
+
+## Batch 36 — item-shape system, menu scroll fix, movement retune, skills
+The "picture-perfect" polish pass (goal-driven):
+- [x] **`PrimitiveFactory.ItemMesh`** — one distinct silhouette per SKU
+      (egg ellipsoid, tomato+stem, ketchup bottle+cap, bread loaf+crust,
+      wheat sheaf, flour sack, milk carton w/ blue band, milk bottle,
+      cheese wedge, cookie disc+chips, tin+label bands, coffee cup+saucer,
+      apple+stem, corn cob+husk, herb sprig, herb pack, fried egg, dough
+      blob, and a fallback cube). Wired into `ShopShelf` and `StorageRack`
+      stock displays, replacing the identical tinted cubes.
+- [x] **Upgrades panel no longer overflows** — each tab content now lives
+      in a `ScrollRect` + `RectMask2D` viewport with `ContentSizeFitter`;
+      `ShowTab` toggles the viewport (stacked raycast targets would have
+      swallowed drags). Shell enlarged 700×560 → 740×640. Any future row
+      count fits by construction.
+- [x] **Movement retune** — `baseSpeed` 2.0 → 3.0 (world grew to 100×82 in
+      batch 21 but speeds never followed); player speed curve 1.30-1.90 →
+      1.40-2.10 (4.2 → 6.3 u/s); joystick throttle shaped with smoothstep
+      (full commitment by ~70% deflection, no mushy mid-stick); camera
+      smoothSpeed 10 → 14 so it doesn't trail the faster player.
+- [x] **Bread margin fix** — $6 → $8 (inputs Flour $3 + Egg $3 made the
+      oven the only margin-dead chain in the graph).
+- [x] **Skills** — DASH button (orange circle above NET; 1.6× for 2s, 5s
+      cooldown, greys out via `DashCooldownTint` while recharging) and a
+      money-magnet: `MoneyStack` pickup radius now scales with the
+      player's Stack level (1.7u at L1 → 2.9u at L5).
+- [ ] Live capture of the new shelves/panel pending Unity MCP approval.
+
 ## Batch 34 — full-progression desk playthrough (L1 → max) + gap report
 Unity MCP revoked again, so this is a desk playthrough computed from the
 real catalog numbers (XP curve, prices, pad ladder, spawn rates), to be

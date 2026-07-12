@@ -35,7 +35,11 @@ namespace MiniMart.Characters
         public virtual System.Collections.Generic.List<Core.ItemType> GetCarriedItems() => new System.Collections.Generic.List<Core.ItemType>();
 
         [Header("Movement")]
-        public float baseSpeed = 2.0f;          // world units / second at multiplier 1.0
+        // Batch 36: 2.0 → 3.0. The world grew to 100×82 units (batch 21) but
+        // speeds never followed — crossing the store band took ~8s and read as
+        // sluggish. 3.0 restores the reference game's bustling pace for every
+        // character; the player rides higher via the RoleCatalog speed curve.
+        public float baseSpeed = 3.0f;          // world units / second at multiplier 1.0
         public float speedMultiplier = 1.0f;
         protected Vector3 target;
         protected bool hasTarget;

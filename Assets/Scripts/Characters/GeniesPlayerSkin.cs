@@ -23,6 +23,16 @@ namespace MiniMart.Characters
         {
             try
             {
+                // The Genies NAF renderer requires URP shaders; this project uses
+                // the Built-in pipeline, where the avatar build spams shader
+                // errors and fails anyway. Skip cleanly until the project moves
+                // to URP (or the URP shaders are added to Always Included).
+                if (Shader.Find("Universal Render Pipeline/Unlit") == null)
+                {
+                    Debug.Log("[GeniesPlayerSkin] URP shaders not present (Built-in RP project) — keeping primitive body.");
+                    return;
+                }
+
                 var avatar = await AvatarSdk.LoadAvatarAsync(new LoadAvatarOptions.User
                 {
                     AvatarName = "PlayerAvatar",

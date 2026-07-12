@@ -6,7 +6,9 @@ namespace MiniMart.Engine
     {
         public Transform target;
         public Vector3 offset = new Vector3(0f, 15f, -10f); // Adjust for isometric
-        public float smoothSpeed = 10f;
+        // Batch 36: 10 → 14. With the faster player speeds the old damping let
+        // the camera trail visibly, which read as movement lag.
+        public float smoothSpeed = 14f;
 
         private void LateUpdate()
         {

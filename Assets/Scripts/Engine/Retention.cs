@@ -47,6 +47,73 @@ namespace MiniMart.Engine
     }
 
     /// <summary>
+    /// Guided-unlock tour (batch 40, from real-player feedback: "lots of
+    /// confusion, can't understand where to start"). Whenever the store levels
+    /// up, a big bouncing yellow arrow appears over the CHEAPEST newly revealed
+    /// purchase pad with a toast naming it. The arrow follows until that pad is
+    /// bought (or 25s pass), then rests until the next level. Non-tech players
+    /// get a "do this next" breadcrumb through every unlock, not just the
+    /// first-run tutorial loop.
+    /// </summary>
+    public class UnlockGuide : MonoBehaviour
+    {
+        private int lastLevel = -1;
+        private Transform arrow;
+        private PurchasePad target;
+        private float showUntil;
+        private float bobT;
+
+        private void Start()
+        {
+            arrow = new GameObject("UnlockGuideArrow").transform;
+            var yellow = new Color(1f, 0.85f, 0.10f);
+            var stem = PrimitiveFactory.Part(PrimitiveType.Cube, arrow,
+                new Vector3(0, 0.55f, 0), new Vector3(0.5f, 1.0f, 0.5f), yellow);
+            stem.name = "Stem";
+            var tip = PrimitiveFactory.Part(PrimitiveType.Cube, arrow,
+                new Vector3(0, -0.25f, 0), new Vector3(1.0f, 1.0f, 0.5f), yellow);
+            tip.name = "Tip";
+            tip.transform.localRotation = Quaternion.Euler(0f, 0f, 45f);
+            arrow.gameObject.SetActive(false);
+        }
+
+        private void Update()
+        {
+            var gm = GameManager.Instance;
+            if (gm == null) return;
+
+            if (lastLevel < 0) { lastLevel = gm.StoreLevel; return; }
+
+            if (gm.StoreLevel > lastLevel)
+            {
+                lastLevel = gm.StoreLevel;
+                // Cheapest pad of the just-unlocked tier = the natural next step.
+                PurchasePad best = null;
+                foreach (var p in FindObjectsByType<PurchasePad>(FindObjectsSortMode.None))
+                    if (p.MinLevel == gm.StoreLevel && (best == null || p.Cost < best.Cost)) best = p;
+                if (best != null)
+                {
+                    target = best;
+                    showUntil = Time.time + 25f;
+                    Toast.Show($"NEW: {best.Label}! Follow the arrow and stand on the pad.", 5f);
+                }
+            }
+
+            bool show = target != null && Time.time < showUntil;
+            if (arrow != null && arrow.gameObject.activeSelf != show)
+                arrow.gameObject.SetActive(show);
+            if (show)
+            {
+                bobT += Time.deltaTime * 4f;
+                var p = target.transform.position;
+                arrow.position = new Vector3(p.x, 3.2f + Mathf.Abs(Mathf.Sin(bobT)) * 0.45f, p.z);
+            }
+            else if (target == null && arrow != null && arrow.gameObject.activeSelf)
+                arrow.gameObject.SetActive(false); // pad purchased mid-show
+        }
+    }
+
+    /// <summary>
     /// Two small retention loops, casual-genre standard (batch-35 requirement #5):
     ///
     ///  • Daily bonus — once per calendar day, a cash gift scaled by store level.

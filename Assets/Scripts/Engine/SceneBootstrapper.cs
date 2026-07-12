@@ -107,8 +107,7 @@ namespace MiniMart
             PrimitiveFactory.GrassGround(new Vector3(0f, 0, 61f), 100f, 2f);
 
             // Store floor: Supermarket Zone (Z = 40 to 60)
-            PrimitiveFactory.StoreFloor(new Vector3(-5f,  0, 50f), 30f, 20f);   // Cashier/Central (beige)
-            PrimitiveFactory.CafeFloor (new Vector3(20f, 0, 50f), 20f,  20f);   // Bakery & Café (pink)
+            PrimitiveFactory.StoreFloor(new Vector3(-5f,  0, 50f), 30f, 20f);   // Mart 1 (basic items)
 
             // Broad asphalt road along the north edge (Z = 62 to 78 — 16 units wide,
             // 100 units long). Buyers walk in along it and delivery trucks drive down
@@ -118,22 +117,15 @@ namespace MiniMart
             // Perimeter trees. Ring the enlarged lot (X ±50, Z 0-82).
             PrimitiveFactory.TreePerimeter(-50f, 50f, 0f, 82f, 3.4f);
 
-            // ── Store walls ──
-            // South wall along z=40 with service opening for farm↔store.
+            // ── Store walls (Mart 1) ──
             PrimitiveFactory.Wall("Wall_South_A", new Vector3(-10f, 0, 40f), new Vector3(20f, 0.85f, 0.3f));
-            PrimitiveFactory.Wall("Wall_South_B", new Vector3( 20f, 0, 40f), new Vector3(20f, 0.85f, 0.3f));
-            // North wall along z=60 with two customer door gaps, aligned to the
-            // actual Door objects (entry x=-15, exit x=25 — each ~3.5u wide).
-            // Previous segment sizes covered the door positions and left the
-            // visible gaps elsewhere, so buyers appeared to walk through walls.
             PrimitiveFactory.Wall("Wall_North_A", new Vector3(-18.4f, 0, 60f), new Vector3(3.2f,  0.85f, 0.3f));
-            PrimitiveFactory.Wall("Wall_North_B", new Vector3(  5f,   0, 60f), new Vector3(36.5f, 0.85f, 0.3f));
-            PrimitiveFactory.Wall("Wall_North_C", new Vector3( 28.4f, 0, 60f), new Vector3(3.2f,  0.85f, 0.3f));
-            // Side walls enclosing the store. West wall has a gap for the delivery
-            // entrance (Z=53..57) so the player can walk through to load the van.
+            PrimitiveFactory.Wall("Wall_North_B", new Vector3( -2f,   0, 60f), new Vector3(24f, 0.85f, 0.3f));
             PrimitiveFactory.Wall("Wall_West_N", new Vector3(-20f, 0, 45f), new Vector3(0.3f, 0.85f, 10f));
             PrimitiveFactory.Wall("Wall_West_S", new Vector3(-20f, 0, 58f), new Vector3(0.3f, 0.85f, 4f));
-            PrimitiveFactory.Wall("Wall_East",   new Vector3( 30f, 0, 50f), new Vector3(0.3f, 0.85f, 20f));
+            PrimitiveFactory.Wall("Wall_East",   new Vector3( 10f, 0, 50f), new Vector3(0.3f, 0.85f, 20f));
+
+
 
             // Red-white candy-striped angled barrier marking the west delivery entrance.
             PrimitiveFactory.StripedGate(new Vector3(-20f, 0, 55f), 5f);
@@ -196,19 +188,7 @@ namespace MiniMart
             var wheatFarmComp = wheatFarmGO.AddComponent<WheatFarm>();
             PrimitiveFactory.WheatFarm(wheatFarmGO);
 
-            var cornFieldGO = CreateAt("CornField", new Vector2(24f, 8f));
-            var cornFieldComp = cornFieldGO.AddComponent<CornField>();
-            PrimitiveFactory.CornField(cornFieldGO);
 
-            // Apple orchard — plan.md §3 "Apple trees: (24, 0, 12)". Fills the
-            // dead-SKU gap found in the batch-34 playthrough.
-            var appleOrchardGO = CreateAt("AppleOrchard", new Vector2(24f, 12f));
-            var appleOrchardComp = appleOrchardGO.AddComponent<AppleOrchard>();
-            PrimitiveFactory.AppleOrchard(appleOrchardGO);
-
-            var assistantGO = CreateAt("AssistantNode", new Vector2(0f, 20f));
-            var assistantComp = assistantGO.AddComponent<AI.AssistantNode>();
-            assistantComp.cornField = cornFieldComp;
 
             // ═══════════════════════════════════════════════════════════════════
             //  PROCESSING AREA — Factory center: (0, 0, 32)
@@ -216,17 +196,7 @@ namespace MiniMart
             var factoryGO = CreateAt("ProcessingFactory", new Vector2(0f, 32f));
             PrimitiveFactory.ProcessingFactory(factoryGO);
 
-            var tomatoCannerGO = CreateAt("TomatoCanner", new Vector2(-10f, 32f));
-            var tomatoCannerComp = tomatoCannerGO.AddComponent<Machine>();
-            tomatoCannerComp.Type = Catalog.MachineType.TomatoCanner;
-            PrimitiveFactory.MachineVisual(tomatoCannerGO, "TomatoCanner");
-            tomatoCannerGO.AddComponent<MachineBadge>();
 
-            var cornProcGO = CreateAt("CornProcessor", new Vector2(-5f, 32f));
-            var cornProcComp = cornProcGO.AddComponent<Machine>();
-            cornProcComp.Type = Catalog.MachineType.CornProcessor;
-            PrimitiveFactory.MachineVisual(cornProcGO, "CornProcessor");
-            cornProcGO.AddComponent<MachineBadge>();
             
             var doughMixerGO = CreateAt("DoughMixer", new Vector2(5f, 32f));
             var doughMixerComp = doughMixerGO.AddComponent<Machine>();
@@ -246,11 +216,9 @@ namespace MiniMart
             PrimitiveFactory.MachineVisual(milkBottlerGO, "MilkBottler");
             milkBottlerGO.AddComponent<MachineBadge>();
 
-            var cookieGO = CreateAt("CookieLine", new Vector2(20f, 32f));
-            var cookieComp = cookieGO.AddComponent<Machine>();
-            cookieComp.Type = Catalog.MachineType.CookieStation;
-            PrimitiveFactory.MachineVisual(cookieGO, "CookieLine");
-            cookieGO.AddComponent<MachineBadge>();
+
+
+
 
             // ═══════════════════════════════════════════════════════════════════
             //  4. CASH COUNTERS (inside store, front area)
@@ -266,15 +234,7 @@ namespace MiniMart
             cc2Comp.CounterIndex = 2;
             PrimitiveFactory.CashCounter(cc2GO);
 
-            var cc3GO = CreateAt("CashCounter3", new Vector2(-10, 55));
-            var cc3Comp = cc3GO.AddComponent<CashCounter>();
-            cc3Comp.CounterIndex = 3;
-            PrimitiveFactory.CashCounter(cc3GO);
 
-            var cc4GO = CreateAt("CashCounter4", new Vector2(-10, 50));
-            var cc4Comp = cc4GO.AddComponent<CashCounter>();
-            cc4Comp.CounterIndex = 4;
-            PrimitiveFactory.CashCounter(cc4GO);
 
             // ═══════════════════════════════════════════════════════════════════
             //  5. SHELVES (inside store, arranged in rows)
@@ -287,25 +247,27 @@ namespace MiniMart
             var shelvesList = new List<ShopShelf>();
             int shelfIndex = 0;
             Vector2[] shelfPositions = {
-                // Central Display Aisles (produce and canned goods)
-                new Vector2(-2, 50),   // Egg Stand
-                new Vector2(2, 50),    // Tomato Stand
-                new Vector2(6, 50),    // Corn Stand
-                new Vector2(10, 50),   // Apple Stand
-                new Vector2(-2, 55),   // Canned Tomato Shelf
-                new Vector2(2, 55),    // Processed Corn Shelf
-                // Bakery & Café (pink zone)
-                new Vector2(18, 50),   // Bread Shelf
-                new Vector2(22, 50),   // Cookie Display
-                new Vector2(26, 50),   // Milk Fridge
-                new Vector2(18, 55),   // Bottled Milk
+                // Mart 1 (Basic Items)
+                new Vector2(-6, 50),   // Tomato
+                new Vector2(-2, 50),   // Egg
+                new Vector2(2, 50),    // TomatoKetchup
+                new Vector2(6, 50),    // Wheat
+                new Vector2(10, 50),   // WheatFlour
+                new Vector2(-6, 45),   // Bread
+                new Vector2(-2, 45),   // BottledMilk
+                new Vector2(2, 45),    // FriedEgg
             };
 
             foreach (Core.ItemType item in System.Enum.GetValues(typeof(Core.ItemType)))
             {
-                // Only create shelves for retail items (processed + specific raw ones)
-                if (item == Core.ItemType.Wheat || item == Core.ItemType.Dough || 
+                // Skip non-retail items AND Mart 2 items
+                if (item == Core.ItemType.Dough || 
                     item == Core.ItemType.Milk || item == Core.ItemType.CookieDough)
+                    continue;
+                
+                if (item == Core.ItemType.Apple || item == Core.ItemType.Corn || item == Core.ItemType.ProcessedCorn ||
+                    item == Core.ItemType.CannedTomato || item == Core.ItemType.Herb || item == Core.ItemType.Cheese ||
+                    item == Core.ItemType.HerbPack || item == Core.ItemType.Cookie || item == Core.ItemType.Coffee)
                     continue;
 
                 Vector2 pos = shelfIndex < shelfPositions.Length
@@ -337,14 +299,11 @@ namespace MiniMart
             var entryDoor = CreateAt("EntryDoor", new Vector2(-15f, 60.5f));
             PrimitiveFactory.Door(entryDoor, true);
 
-            var exitDoor = CreateAt("ExitDoor", new Vector2(25f, 60.5f));
+            // Exit door on the same side so buyers don't look like they are fleeing
+            var exitDoor = CreateAt("ExitDoor", new Vector2(-18f, 60.5f));
             PrimitiveFactory.Door(exitDoor, false);
 
-            var officeGO = CreateAt("OfficeDesk", new Vector2(25f, 55f));
-            PrimitiveFactory.OfficeDesk(officeGO);
 
-            var nextMartGO = CreateAt("NextMartPreview", new Vector2(35f, 55f));
-            PrimitiveFactory.NextMartPreview(nextMartGO);
 
             StorageRack MakeRack(Core.ItemType item, Vector2 pos)
             {
@@ -360,19 +319,13 @@ namespace MiniMart
 
             var rackEgg     = MakeRack(Core.ItemType.Egg,           new Vector2(-18f, 8f));
             var rackTomato  = MakeRack(Core.ItemType.Tomato,        new Vector2(14f, 10f));
-            var rackCorn    = MakeRack(Core.ItemType.Corn,          new Vector2(26f, 6f));
             var rackWheat   = MakeRack(Core.ItemType.Wheat,         new Vector2(14f, 6f));
-            var rackApple   = MakeRack(Core.ItemType.Apple,         new Vector2(26f, 10f));
             var rackMilk    = MakeRack(Core.ItemType.Milk,          new Vector2(-10f, 8f));
             
             // Intermediate Storage (near machines in Z=32)
             var rackDough       = MakeRack(Core.ItemType.Dough,        new Vector2(5f, 30f));
-            var rackCDough      = MakeRack(Core.ItemType.CookieDough,  new Vector2(20f, 30f));
-            var rackCTomato     = MakeRack(Core.ItemType.CannedTomato, new Vector2(-10f, 34f));
-            var rackPCorn       = MakeRack(Core.ItemType.ProcessedCorn,new Vector2(-5f, 34f));
             var rackBread       = MakeRack(Core.ItemType.Bread,        new Vector2(10f, 34f));
             var rackBMilk       = MakeRack(Core.ItemType.BottledMilk,  new Vector2(15f, 34f));
-            var rackCookie      = MakeRack(Core.ItemType.Cookie,       new Vector2(20f, 34f));
 
             // ═══════════════════════════════════════════════════════════════════
             //  Extended production chain (Blender/Mill/Dairy/Stove/HerbPatch/
@@ -397,40 +350,12 @@ namespace MiniMart
             millGO.AddComponent<MachineBadge>();
             var rackFlour = MakeRack(Core.ItemType.WheatFlour, new Vector2(-10f, 38f));
 
-            var dairyGO = CreateAt("Dairy", new Vector2(-5f, 36f));
-            var dairyComp = dairyGO.AddComponent<Machine>();
-            dairyComp.Type = Catalog.MachineType.Dairy;
-            PrimitiveFactory.MachineVisual(dairyGO, "Dairy");
-            dairyGO.AddComponent<MachineBadge>();
-            var rackCheese = MakeRack(Core.ItemType.Cheese, new Vector2(-5f, 38f));
-
             var stoveGO = CreateAt("EggStove", new Vector2(0f, 36f));
             var stoveComp = stoveGO.AddComponent<Machine>();
             stoveComp.Type = Catalog.MachineType.Stove;
             PrimitiveFactory.MachineVisual(stoveGO, "Stove");
             stoveGO.AddComponent<MachineBadge>();
             var rackFried = MakeRack(Core.ItemType.FriedEgg, new Vector2(0f, 38f));
-
-            var leafGO = CreateAt("LeafProcessor", new Vector2(5f, 36f));
-            var leafComp = leafGO.AddComponent<Machine>();
-            leafComp.Type = Catalog.MachineType.LeafProcessor;
-            PrimitiveFactory.MachineVisual(leafGO, "LeafProcessor");
-            leafGO.AddComponent<MachineBadge>();
-            var rackHerbPk = MakeRack(Core.ItemType.HerbPack, new Vector2(5f, 38f));
-
-            var coffeeGO = CreateAt("CoffeeDispenser", new Vector2(10f, 36f));
-            var coffeeComp = coffeeGO.AddComponent<Machine>();
-            coffeeComp.Type = Catalog.MachineType.CoffeeDispenser;
-            PrimitiveFactory.CoffeeDispenser(coffeeGO);
-            coffeeGO.AddComponent<MachineBadge>();
-            var rackCoffee = MakeRack(Core.ItemType.Coffee, new Vector2(10f, 38f));
-
-            // Herb patch lives in the farm band next to the other crops, not the
-            // factory strip — it's a growable crop, not a machine.
-            var herbPatchGO = CreateAt("HerbPatch", new Vector2(20f, 12f));
-            var herbPatchComp = herbPatchGO.AddComponent<Production.HerbPatch>();
-            PrimitiveFactory.HerbPatch(herbPatchGO);
-            var rackHerb = MakeRack(Core.ItemType.Herb, new Vector2(22f, 14f));
 
             var db1 = CreateAt("Dustbin1", new Vector2(14, 17));
             PrimitiveFactory.Dustbin(db1);
@@ -482,14 +407,12 @@ namespace MiniMart
             interact.wheatFarm = wheatFarmComp;
             interact.henCoop = henCoopComp;
             interact.cowPen = cowPenComp;
-            interact.tomatoCanner = tomatoCannerComp;
             interact.oven = ovenComp;
             interact.doughMixer = doughMixerComp;
             interact.milkBottler = milkBottlerComp;
-            interact.cornField = cornFieldComp;
-            interact.appleOrchard = appleOrchardComp;
-            interact.cornProcessor = cornProcComp;
-            interact.cookieLine = cookieComp;
+            interact.blender = blenderComp;
+            interact.mill = millComp;
+            interact.stove = stoveComp;
             interact.hayFeedTrough = hayTroughComp;
             interact.shelves = shelvesList;
             interact.bins = new List<Transform> { db1.transform, db2.transform };
@@ -520,15 +443,7 @@ namespace MiniMart
             PrimitiveFactory.BuildCharacter(shelver1GO, new Color(0.92f, 0.3f, 0.55f),
                 PrimitiveFactory.CharacterRole.Shelver);
 
-            // Stocker 2
-            var shelver2GO = Spawn(ShelverPrefab, "Stocker2", new Vector2(20, 50));
-            var shelver2Comp = shelver2GO.GetComponent<Shelver>() ?? shelver2GO.AddComponent<Shelver>();
-            shelver2Comp.AssignedShelves = shelvesList.FindAll(s =>
-                RoleCatalog.RoleResponsibilities[Core.RoleType.Shelver2].Contains(s.Item)).ToArray();
-            if (shelver2GO.GetComponent<WobbleAnimator>() == null) shelver2GO.AddComponent<WobbleAnimator>();
-            if (shelver2GO.GetComponent<UI.CarryVisual>() == null) shelver2GO.AddComponent<UI.CarryVisual>();
-            PrimitiveFactory.BuildCharacter(shelver2GO, new Color(0.85f, 0.2f, 0.85f),
-                PrimitiveFactory.CharacterRole.Shelver);
+
 
             // Factory Worker — dedicated Chef class (1-arg Configure, applied later in
             // GameManager.Boot once Inventory exists).
@@ -568,7 +483,7 @@ namespace MiniMart
             spawnerComp.EntranceDoor = buyerSpawn.transform;
             spawnerComp.ExitDoor = buyerExit.transform;
             spawnerComp.AllShelves = shelvesList;
-            spawnerComp.Counters = new List<CashCounter> { cc1Comp, cc2Comp, cc3Comp, cc4Comp };
+            spawnerComp.Counters = new List<CashCounter> { cc1Comp, cc2Comp };
 
             var theftGO = new GameObject("TheftManager");
             var theftComp = theftGO.AddComponent<TheftManager>();
@@ -583,29 +498,29 @@ namespace MiniMart
             // (so the player can load it through the west entrance). It reverses
             // back out onto the road when done.
             var vanSpawn = new GameObject("VanSpawnSpot");
-            vanSpawn.transform.position = new Vector3(-48f, 0, 70f);
+            vanSpawn.transform.position = new Vector3(-48f, 0, 55f);
 
             var vanPickup = new GameObject("VanPickupSpot");
-            vanPickup.transform.position = new Vector3(-18f, 0, 55f);
+            vanPickup.transform.position = new Vector3(-23f, 0, 55f);
 
             // Painted white parking rectangle under the van's pickup spot, matching
             // the reference marker.
-            PrimitiveFactory.VanParkingSpot(new Vector3(-18f, 0, 55f));
+            PrimitiveFactory.VanParkingSpot(new Vector3(-23f, 0, 55f));
 
             var pomGO = new GameObject("PhoneOrderManager");
             var pomComp = pomGO.AddComponent<PhoneOrderManager>();
             pomComp.SpawnSpot = vanSpawn.transform;
             pomComp.PickupSpot = vanPickup.transform;
+            pomComp.AllShelves = shelvesList;
 
             var gmGO = new GameObject("GameManager");
             gmGO.AddComponent<DataValidator>(); // Run QA validations on boot
             var gmComp = gmGO.AddComponent<GameManager>();
             gmComp.Player = playerComp;
             gmComp.Shelver1 = shelver1Comp;
-            gmComp.Shelver2 = shelver2Comp;
             gmComp.Chef = chefComp;
             gmComp.Farmer = farmerComp;
-            gmComp.Counters = new List<CashCounter> { cc1Comp, cc2Comp, cc3Comp, cc4Comp };
+            gmComp.Counters = new List<CashCounter> { cc1Comp, cc2Comp };
             gmComp.BuyerSpawner = spawnerComp;
             gmComp.TheftManager = theftComp;
             gmComp.PhoneOrderManager = pomComp;
@@ -615,17 +530,9 @@ namespace MiniMart
             gmComp.Blender = blenderComp;
             gmComp.Oven = ovenComp;
             gmComp.Mill = millComp;
-            gmComp.Dairy = dairyComp;
             gmComp.CowPen = cowPenComp;
-            gmComp.HerbPatch = herbPatchComp;
-            gmComp.LeafProcessor = leafComp;
             gmComp.Stove = stoveComp;
-            gmComp.CornProcessor = cornProcComp;
-            gmComp.CookieStation = cookieComp;
-            gmComp.CoffeeDispenser = coffeeComp;
-            gmComp.CornField = cornFieldComp;
             gmComp.HayFeedTrough = hayTroughComp;
-            gmComp.AssistantNode = assistantComp;
 
             // ═══════════════════════════════════════════════════════════════════
             //  10. HUD — built AFTER GameManager so HUDController.Awake can find it
@@ -651,45 +558,53 @@ namespace MiniMart
                 }
             }
 
-            // Progressive disclosure (reference-game drip feed): a fresh player sees
-            // only the level-1 pads; each store level-up reveals the next batch.
-            // Keeps the map readable for young/new players and gives every level-up
-            // a visible reward burst.
-            Gate(15f,  1, "Hire Farmer",    farmerGO);
-            Gate(25f,  1, "Hen Coop",       henCoopGO, ShelfOf(Core.ItemType.Egg)?.gameObject, rackEgg.gameObject);
-            Gate(40f,  1, "Hire Shelver A", shelver1GO);
-            Gate(50f,  2, "Wheat Farm",     wheatFarmGO, ShelfOf(Core.ItemType.Wheat)?.gameObject, rackWheat.gameObject);
-            Gate(75f,  2, "Blender",        blenderGO, ShelfOf(Core.ItemType.TomatoKetchup)?.gameObject, rackKetchup.gameObject);
-            Gate(60f,  2, "Hire Shelver B", shelver2GO);
-            Gate(125f, 2, "Wheat Mill",     millGO, ShelfOf(Core.ItemType.WheatFlour)?.gameObject, rackFlour.gameObject);
-            Gate(150f, 3, "Hire Chef",      chefGO);
-            Gate(100f, 3, "Cow Pen",        cowPenGO, ShelfOf(Core.ItemType.Milk)?.gameObject, rackMilk.gameObject);
-            Gate(175f, 4, "Dairy",          dairyGO, ShelfOf(Core.ItemType.Cheese)?.gameObject, rackCheese.gameObject);
-            Gate(200f, 3, "Bread Oven",     ovenGO, ShelfOf(Core.ItemType.Bread)?.gameObject, rackBread.gameObject);
-            Gate(110f, 4, "Egg Stove",      stoveGO, ShelfOf(Core.ItemType.FriedEgg)?.gameObject, rackFried.gameObject);
-            Gate(90f,  4, "Herb Patch",     herbPatchGO, ShelfOf(Core.ItemType.Herb)?.gameObject, rackHerb.gameObject);
-            Gate(140f, 5, "Leaf Unit",      leafGO, ShelfOf(Core.ItemType.HerbPack)?.gameObject, rackHerbPk.gameObject);
-            Gate(300f, 3, "Counter 2",      cc2GO); // batch 35: L4→L3 (queue-overflow fix)
-            Gate(400f, 5, "Counter 3",      cc3GO);
-            Gate(500f, 6, "Counter 4",      cc4GO);
-            // New map spec content: corn chain + bakery/café.
-            Gate(120f, 2, "Corn Field",      cornFieldGO, ShelfOf(Core.ItemType.Corn)?.gameObject, rackCorn.gameObject);
-            Gate(65f,  2, "Apple Orchard",   appleOrchardGO, ShelfOf(Core.ItemType.Apple)?.gameObject, rackApple.gameObject);
-            // Legacy machines/shelves that previously started active (off-pattern
-            // clutter at L1): gate them like everything else.
-            Gate(80f,  2, "Dough Mixer",     doughMixerGO, rackDough.gameObject);
-            Gate(120f, 3, "Milk Bottler",    milkBottlerGO, ShelfOf(Core.ItemType.BottledMilk)?.gameObject, rackBMilk.gameObject);
-            Gate(130f, 4, "Tomato Canner",   tomatoCannerGO, ShelfOf(Core.ItemType.CannedTomato)?.gameObject, rackCTomato.gameObject);
-            Gate(180f, 3, "Corn Processor",  cornProcGO, ShelfOf(Core.ItemType.ProcessedCorn)?.gameObject, rackPCorn.gameObject);
-            Gate(250f, 5, "Assistant Node",  assistantGO);
-            Gate(160f, 3, "Hay Trough",      hayTroughGO);
-            Gate(220f, 5, "Cookie Station",  cookieGO, ShelfOf(Core.ItemType.Cookie)?.gameObject, rackCookie.gameObject);
-            Gate(280f, 6, "Coffee",          coffeeGO, ShelfOf(Core.ItemType.Coffee)?.gameObject, rackCoffee.gameObject);
-            // Spec §3.4: NEXT MART expansion pad at the far right. Cost $880 to
-            // "unlock" the preview tile — the truck + tan slab remain visible as
-            // a "future store" indicator once purchased. Full second-store build
-            // is v1.1 content; this pad just clears the marker for now.
-            Gate(880f, 6, "Next Mart",      nextMartGO);
+            // ══════════ TWO-MART SPLIT ══════════
+            // Mart 1 "Mini Mart" (Game.unity):  tomato, egg, wheat chains.
+            // Mart 2 "MegaMart" (MegaMart.unity): milk, corn, herb, coffee,
+            //   apple chains — a separate PLACE like the reference's
+            //   "GO TO Cafe Mart". Shared cash/XP, travel pads both ways.
+            // Unlock pacing per user feedback: at most THREE pads per level,
+            // ladder spans L1-L10 across the two marts.
+            bool isMegaMart = UnityEngine.SceneManagement.SceneManager
+                .GetActiveScene().name.Contains("MegaMart");
+
+            void Retire(params GameObject[] gos)
+            {
+                foreach (var g in gos) if (g != null) Object.Destroy(g);
+            }
+
+            // Dough Mixer chain retired from both marts: redundant with the
+            // Mill→Oven bread path and its Dough SKU has no shelf.
+            Retire(doughMixerGO, rackDough.gameObject);
+
+            if (!isMegaMart)
+            {
+                // ── MART 1 ladder (user's exact pacing) ──
+                Gate(15f,  1, "Hire Farmer",    farmerGO);
+                Gate(25f,  1, "Hen Coop",       henCoopGO, ShelfOf(Core.ItemType.Egg)?.gameObject, rackEgg.gameObject);
+                Gate(40f,  1, "Hire Shelver",   shelver1GO);
+
+                Gate(75f,  2, "Ketchup Blender", blenderGO, ShelfOf(Core.ItemType.TomatoKetchup)?.gameObject, rackKetchup.gameObject);
+
+                Gate(50f,  3, "Wheat Farm",     wheatFarmGO, ShelfOf(Core.ItemType.Wheat)?.gameObject, rackWheat.gameObject);
+                Gate(300f, 3, "Counter 2",      cc2GO);
+
+                Gate(125f, 4, "Wheat Mill",     millGO, ShelfOf(Core.ItemType.WheatFlour)?.gameObject, rackFlour.gameObject);
+                Gate(150f, 4, "Hire Chef",      chefGO);
+
+                Gate(200f, 5, "Bread Oven",     ovenGO, ShelfOf(Core.ItemType.Bread)?.gameObject, rackBread.gameObject);
+                Gate(110f, 5, "Egg Stove",      stoveGO, ShelfOf(Core.ItemType.FriedEgg)?.gameObject, rackFried.gameObject);
+
+                // L6: the big milestone — the road to MegaMart opens.
+                var travelPad = SceneTransition.Create(new Vector3(35f, 0, 55f), "MegaMart", "GO TO MEGAMART").gameObject;
+                Gate(500f, 6, "MegaMart",       travelPad);
+
+                // Milk chain lives in MegaMart now — remove it from this scene.
+                Retire(cowPenGO, hayTroughGO, milkBottlerGO,
+                       rackMilk.gameObject, rackBMilk.gameObject,
+                       ShelfOf(Core.ItemType.Milk)?.gameObject,
+                       ShelfOf(Core.ItemType.BottledMilk)?.gameObject);
+            }
 
             // First-run guided onboarding: bouncing arrow + banner walking a brand
             // new player through harvest → stock → collect → build. Skipped for
@@ -697,8 +612,27 @@ namespace MiniMart
             if (!MiniMart.Save.SaveSystem.HasSave())
                 new GameObject("TutorialGuide").AddComponent<TutorialGuide>();
 
+            // ── Locator icons (real-user feedback: "map is too big, can't find
+            // the tomato farm"). A giant floating item silhouette above every
+            // production source, readable from across the lot. Parented to the
+            // source GameObject, so gated sources keep their icon hidden until
+            // the unlock pad is bought — matching the reference's "locked
+            // content is invisible until reached" rule.
+            void Locator(GameObject source, Core.ItemType item)
+            {
+                if (source == null) return;
+                var icon = PrimitiveFactory.ItemMesh(item, source.transform, new Vector3(0, 3.4f, 0), 3.5f);
+                icon.name = $"Locator_{item}";
+                icon.AddComponent<LocatorBob>();
+            }
+            Locator(tomatoFarmGO,   Core.ItemType.Tomato);
+            Locator(wheatFarmGO,    Core.ItemType.Wheat);
+            Locator(henCoopGO,      Core.ItemType.Egg);
+            Locator(cowPenGO,       Core.ItemType.Milk);
+
             // Retention loops: daily bonus + rotating "serve N customers" goals.
             new GameObject("Retention").AddComponent<Retention>();
+            new GameObject("UnlockGuide").AddComponent<UnlockGuide>();
 
             // Calm shop BGM loop (Resources/Music/shop_loop) — no-ops if missing.
             AudioFx.StartMusic();
@@ -778,6 +712,21 @@ namespace MiniMart
             if (prefab != null)
                 return Object.Instantiate(prefab, new Vector3(pos.x, 0, pos.y), Quaternion.identity);
             return CreateAt(name, pos);
+        }
+    }
+
+    /// <summary>Gentle float + slow spin for the farm locator icons so they
+    /// read as living markers rather than static debris.</summary>
+    public class LocatorBob : MonoBehaviour
+    {
+        private Vector3 basePos;
+        private float t;
+        private void Start() => basePos = transform.localPosition;
+        private void Update()
+        {
+            t += Time.deltaTime;
+            transform.localPosition = basePos + Vector3.up * (Mathf.Sin(t * 2f) * 0.25f);
+            transform.Rotate(0f, 40f * Time.deltaTime, 0f);
         }
     }
 

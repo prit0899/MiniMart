@@ -1,0 +1,12 @@
+{
+  "description": "game-dev team telemetry - logs tool usage to JSONL",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "type": "command",
+        "command": "python ${CLAUDE_PLUGIN_ROOT}/hooks/team-logger.py",
+        "timeout": 5
+      }
+    ]
+  }
+}

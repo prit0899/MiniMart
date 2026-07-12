@@ -97,7 +97,10 @@ namespace MiniMart.Engine
             foreach (var item in allItems)
             {
                 Assert(PriceCatalog.BasePrice.ContainsKey(item), S, $"{item}.HasPrice");
-                Assert(PriceCatalog.UnlockLevel.ContainsKey(item), S, $"{item}.HasUnlockLevel");
+                // Retired chains (two-mart split) keep a price for legacy stock
+                // but deliberately have no unlock level — see PriceCatalog.Retired.
+                if (!PriceCatalog.Retired.Contains(item))
+                    Assert(PriceCatalog.UnlockLevel.ContainsKey(item), S, $"{item}.HasUnlockLevel");
 
                 if (PriceCatalog.BasePrice.TryGetValue(item, out float price))
                 {
@@ -893,7 +896,9 @@ namespace MiniMart.Engine
             // Counter 1 unlock levels from PriceCatalog constants
             Assert(PriceCatalog.CashCounter1UnlockLevel == 1, S, "Counter1.UnlocksAt1");
             Assert(PriceCatalog.Cashier1AssignableLevel  == 1, S, "Counter1.CashierFromStart");
-            Assert(PriceCatalog.CashCounter2UnlockLevel  == 4, S, "Counter2.UnlocksAt4");
+            // Batch 35 moved Counter 2 from L4 to L3 (single-counter queue
+            // overflow bit hard at L3) — the assertion tracks the design change.
+            Assert(PriceCatalog.CashCounter2UnlockLevel  == 3, S, "Counter2.UnlocksAt3");
 
             // Seconds-per-checkout sanity
             Assert(1.2f > 0f, S, "SecondsPerCheckout.Positive");

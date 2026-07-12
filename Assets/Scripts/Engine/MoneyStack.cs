@@ -121,7 +121,11 @@ namespace MiniMart.Engine
             var gm = GameManager.Instance;
             if (gm == null || gm.Player == null) return;
 
-            if (Vector3.Distance(gm.Player.transform.position, transform.position) < 1.4f)
+            // Money-magnet skill (batch 36): pickup radius grows with the player's
+            // Stack level (L1: 1.7u → L5: 2.9u), so upgrading also makes cash
+            // collection breezier — removes the fiddliest walk-target in the game.
+            float magnetRadius = 1.4f + 0.3f * Mathf.Max(1, gm.Player.StackLevel);
+            if (Vector3.Distance(gm.Player.transform.position, transform.position) < magnetRadius)
             {
                 gm.Economy.Deposit(Value);
                 gm.AddStoreXp(Mathf.Max(1, Mathf.CeilToInt(Value)));
