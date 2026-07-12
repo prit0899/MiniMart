@@ -95,7 +95,7 @@ namespace MiniMart.Catalog
         // Batch 39 reconcile: the Counter 2 pad sells at L3 (queue-overflow fix,
         // batch 35) — this constant MUST match or the bought counter stays closed.
         public const int CashCounter2UnlockLevel = 3;
-        public const int CashCounter3UnlockLevel = 9;  // Mart 2
+        public const int CashCounter3UnlockLevel = 6;  // Mart 2's only till until L10 - open on arrival
         public const int CashCounter4UnlockLevel = 10;  // Mart 2 endgame
 
         public const float MinBundlePrice = 1.00f; // floor: no full basket/bundle should price under $1

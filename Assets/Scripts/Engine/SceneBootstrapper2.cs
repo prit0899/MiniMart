@@ -204,10 +204,13 @@ namespace MiniMart
                 new Vector2(22, 55),   // Cookie
                 new Vector2(26, 55),   // Coffee
             };
+            // Milk/BottledMilk replaced the retired CannedTomato/Cookie chains
+            // when the milk line moved into MegaMart (found by TesterBot run 1:
+            // harvested milk had no shelf, hard-deadlocking the carry stack).
             Core.ItemType[] shelfItems = {
                 Core.ItemType.Apple, Core.ItemType.Corn, Core.ItemType.ProcessedCorn,
-                Core.ItemType.CannedTomato, Core.ItemType.Cheese, Core.ItemType.Herb,
-                Core.ItemType.HerbPack, Core.ItemType.Cookie, Core.ItemType.Coffee
+                Core.ItemType.Milk, Core.ItemType.Cheese, Core.ItemType.Herb,
+                Core.ItemType.HerbPack, Core.ItemType.BottledMilk, Core.ItemType.Coffee
             };
 
             for (int i = 0; i < shelfItems.Length; i++)
@@ -349,7 +352,9 @@ namespace MiniMart
             Gate(175f, 8, "Cheese Dairy",  dairyGO, ShelfOf(Core.ItemType.Cheese)?.gameObject, rackCheese.gameObject);
 
             Gate(140f, 9, "Leaf Unit",     leafGO, ShelfOf(Core.ItemType.HerbPack)?.gameObject, rackHerbPk.gameObject);
-            Gate(400f, 9, "Counter 3",     cc3GO);
+            // Counter 3 is deliberately NOT gated: it is MegaMart's only till
+            // until L10, so it must work the moment the player arrives (L6) or
+            // buyers can never pay and XP income stops entirely.
 
             Gate(280f, 10, "Coffee Bar",   coffeeGO, ShelfOf(Core.ItemType.Coffee)?.gameObject, rackCoffee.gameObject);
             Gate(500f, 10, "Counter 4",    cc4GO);

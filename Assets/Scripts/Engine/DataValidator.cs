@@ -899,6 +899,11 @@ namespace MiniMart.Engine
             // Batch 35 moved Counter 2 from L4 to L3 (single-counter queue
             // overflow bit hard at L3) — the assertion tracks the design change.
             Assert(PriceCatalog.CashCounter2UnlockLevel  == 3, S, "Counter2.UnlocksAt3");
+            // Counter 3 is MegaMart's only till until L10 - it must be open the
+            // moment travel unlocks (L6) or MegaMart income/XP hard-stalls.
+            // Found by TesterBot run 1: 18 sim-minutes at L6 with zero progress.
+            Assert(PriceCatalog.CashCounter3UnlockLevel  == 6, S, "Counter3.OpenOnArrival");
+            Assert(PriceCatalog.CashCounter4UnlockLevel  == 10, S, "Counter4.Endgame");
 
             // Seconds-per-checkout sanity
             Assert(1.2f > 0f, S, "SecondsPerCheckout.Positive");

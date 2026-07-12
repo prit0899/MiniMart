@@ -106,9 +106,20 @@ namespace MiniMart.Engine
             musicSource.Play();
         }
 
+        // A busy store fires dozens of coin/sale events per second, which exhausts
+        // Unity's virtual audio channels ("Ran out of virtual channels" warnings)
+        // and turns feedback into noise. One shot per clip per 80ms is inaudibly
+        // different but keeps the mixer healthy.
+        private const float MinInterval = 0.08f;
+        private static readonly System.Collections.Generic.Dictionary<AudioClip, float> lastPlayed =
+            new System.Collections.Generic.Dictionary<AudioClip, float>();
+
         private static void Play(AudioClip clip)
         {
-            if (clip != null) Source.PlayOneShot(clip);
+            if (clip == null) return;
+            if (lastPlayed.TryGetValue(clip, out float t) && Time.unscaledTime - t < MinInterval) return;
+            lastPlayed[clip] = Time.unscaledTime;
+            Source.PlayOneShot(clip);
         }
 
         /// <summary>Builds one clip from a sequence of (frequency, duration) notes with a soft decay.</summary>
