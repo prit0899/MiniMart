@@ -124,8 +124,12 @@ namespace MiniMart
             // the entry doors and leave along the east flank back to the road).
             PrimitiveFactory.GrassGround(new Vector3(0f, 0, 50f), 100f, 20f);
 
-            // Store floor: Supermarket Zone (Z = 40 to 60)
-            PrimitiveFactory.StoreFloor(new Vector3(-5f,  0, 50f), 30f, 20f);   // Mart 1 (basic items)
+            // Store floor tiles cover the WHOLE enclosed building so the shop and
+            // the farm/processing yard read as one interior, not a store sitting
+            // on open grass. Upper = shop floor (z 36..60), lower = farm yard
+            // floor (z 14..36) under the plots and machines.
+            PrimitiveFactory.StoreFloor(new Vector3(-5f, 0, 48f), 30f, 24f);   // shop floor  z 36..60
+            PrimitiveFactory.StoreFloor(new Vector3(-5f, 0, 25f), 30f, 22f);   // farm yard   z 14..36
 
             // Broad asphalt road along the north edge (Z = 62 to 78 — 16 units wide,
             // 100 units long). Buyers walk in along it and delivery trucks drive down
@@ -136,18 +140,25 @@ namespace MiniMart
             PrimitiveFactory.TreePerimeter(-50f, 50f, 0f, 82f, 3.4f);
 
             // ── Store walls (Mart 1) ──
-            // Map plan (Refer/map-plan-mart1.pdf): entry doors on the WEST wall,
-            // exit doors on the EAST wall, north closed, south wall keeps the one
-            // farm<->store service gap at x 1..9.
-            PrimitiveFactory.Wall("Wall_South_A", new Vector3(-9.5f, 0, 40f), new Vector3(21f, 0.85f, 0.3f));
-            PrimitiveFactory.Wall("Wall_South_B", new Vector3( 9.5f, 0, 40f), new Vector3(1f,  0.85f, 0.3f));
-            PrimitiveFactory.Wall("Wall_North",   new Vector3(-5f,   0, 60f), new Vector3(30f, 0.85f, 0.3f));
-            PrimitiveFactory.Wall("Wall_West_S",  new Vector3(-20f, 0, 42f),  new Vector3(0.3f, 0.85f, 4f));
-            PrimitiveFactory.Wall("Wall_West_M",  new Vector3(-20f, 0, 50f),  new Vector3(0.3f, 0.85f, 8f));
-            PrimitiveFactory.Wall("Wall_West_N",  new Vector3(-20f, 0, 58.5f), new Vector3(0.3f, 0.85f, 3f));
-            PrimitiveFactory.Wall("Wall_East_S",  new Vector3( 10f, 0, 42f),  new Vector3(0.3f, 0.85f, 4f));
-            PrimitiveFactory.Wall("Wall_East_M",  new Vector3( 10f, 0, 50f),  new Vector3(0.3f, 0.85f, 8f));
-            PrimitiveFactory.Wall("Wall_East_N",  new Vector3( 10f, 0, 58.5f), new Vector3(0.3f, 0.85f, 3f));
+            // Map plan (Refer/map-plan-mart1.pdf): the WHOLE building is one
+            // enclosed rectangle x[-20,10] z[14,60]. The shop floor is the upper
+            // half (z 36..60); the farm+processing zone is the lower half
+            // (z 14..36), separated ONLY by an interior divider wall at z=36 that
+            // has one middle service gap (x 1..9). Entry doors on the WEST wall,
+            // exit doors on the EAST wall — those are the only openings, so
+            // nothing (farms, machines) sits outside the building any more.
+            PrimitiveFactory.Wall("Wall_Interior_A", new Vector3(-9.5f, 0, 36f), new Vector3(21f, 0.85f, 0.3f)); // x -20..1
+            PrimitiveFactory.Wall("Wall_Interior_B", new Vector3( 9.5f, 0, 36f), new Vector3(1f,  0.85f, 0.3f)); // x 9..10
+            PrimitiveFactory.Wall("Wall_North",  new Vector3(-5f, 0, 60f), new Vector3(30f, 0.85f, 0.3f));       // z=60 closed
+            PrimitiveFactory.Wall("Wall_South",  new Vector3(-5f, 0, 14f), new Vector3(30f, 0.85f, 0.3f));       // z=14 closed
+            // West wall x=-20, z[14,60], entry-door gaps at z[44,46] and z[54,56].
+            PrimitiveFactory.Wall("Wall_West_1", new Vector3(-20f, 0, 29f),   new Vector3(0.3f, 0.85f, 30f)); // z 14..44
+            PrimitiveFactory.Wall("Wall_West_2", new Vector3(-20f, 0, 50f),   new Vector3(0.3f, 0.85f, 8f));  // z 46..54
+            PrimitiveFactory.Wall("Wall_West_3", new Vector3(-20f, 0, 58f),   new Vector3(0.3f, 0.85f, 4f));  // z 56..60
+            // East wall x=10, same z-span, exit-door gaps at z[44,46] and z[54,56].
+            PrimitiveFactory.Wall("Wall_East_1", new Vector3( 10f, 0, 29f),   new Vector3(0.3f, 0.85f, 30f));
+            PrimitiveFactory.Wall("Wall_East_2", new Vector3( 10f, 0, 50f),   new Vector3(0.3f, 0.85f, 8f));
+            PrimitiveFactory.Wall("Wall_East_3", new Vector3( 10f, 0, 58f),   new Vector3(0.3f, 0.85f, 4f));
 
 
 
@@ -176,15 +187,18 @@ namespace MiniMart
             var redBarnGO = CreateAt("RedBarn", new Vector2(-25f, 10f));
             PrimitiveFactory.RedBarn(redBarnGO);
 
-            var henCoopGO = CreateAt("HenCoop", new Vector2(14f, 10f));
+            // Map plan farm row (left→right): Tomato Farm, Wheat Farm, Hen. All
+            // inside the enclosed lower half of the building (z ~22..28), close
+            // to the shop's interior gap — not stranded on distant grass.
+            var henCoopGO = CreateAt("HenCoop", new Vector2(5f, 24f));
             var henCoopComp = henCoopGO.AddComponent<HenCoop>();
             PrimitiveFactory.HenCoop(henCoopGO);
 
-            var cowPenGO = CreateAt("CowPen", new Vector2(-12f, 10f));
+            var cowPenGO = CreateAt("CowPen", new Vector2(-17f, 20f));   // retired in Mart 1
             var cowPenComp = cowPenGO.AddComponent<CowPen>();
             PrimitiveFactory.CowPen(cowPenGO);
 
-            var hayTroughGO = CreateAt("HayFeedTrough", new Vector2(-12f, 12f));
+            var hayTroughGO = CreateAt("HayFeedTrough", new Vector2(-17f, 22f));
             var hayTroughComp = hayTroughGO.AddComponent<HayFeedTrough>();
             hayTroughComp.LinkedCow = cowPenComp;
             cowPenComp.FedBy = hayTroughComp;
@@ -194,21 +208,20 @@ namespace MiniMart
             //  HUB CENTER — 3 in-world upgrade pads + "purchasable plots" outline.
             //  Reference image center-bottom.
             // ═══════════════════════════════════════════════════════════════════
-            UpgradePad.Create(new Vector3(18f, 0f, 3.5f), UpgradePad.Kind.PlayerSpeed);
-            UpgradePad.Create(new Vector3(21f, 0f, 3.5f), UpgradePad.Kind.PlayerCarry);
-            UpgradePad.Create(new Vector3(24f, 0f, 3.5f), UpgradePad.Kind.CropSpeed);
-            // Dashed "purchasable plots" callout outline — reference image.
-            PrimitiveFactory.DashedRect(new Vector3(27f, 0f, 5f), 4f, 6f,
-                new Color(0.94f, 0.94f, 0.94f));
+            // Player upgrade pads — a tidy row along the enclosed farm zone's
+            // bottom edge (inside the walls), not stranded on distant grass.
+            UpgradePad.Create(new Vector3(-16f, 0f, 17f), UpgradePad.Kind.PlayerSpeed);
+            UpgradePad.Create(new Vector3(-13f, 0f, 17f), UpgradePad.Kind.PlayerCarry);
+            UpgradePad.Create(new Vector3(-10f, 0f, 17f), UpgradePad.Kind.CropSpeed);
 
             // ═══════════════════════════════════════════════════════════════════
-            //  AGRICULTURE EAST — Tomato patch (16,12), Wheat (16,8), Corn (24,8)
+            //  FARM ROW (inside the building's lower half, left→right per map)
             // ═══════════════════════════════════════════════════════════════════
-            var tomatoFarmGO = CreateAt("TomatoFarm", new Vector2(-16f, 10f));
+            var tomatoFarmGO = CreateAt("TomatoFarm", new Vector2(-15f, 25f));
             var tomatoFarmComp = tomatoFarmGO.AddComponent<TomatoFarm>();
             PrimitiveFactory.TomatoFarm(tomatoFarmGO);
 
-            var wheatFarmGO = CreateAt("WheatFarm", new Vector2(-2f, 10f));
+            var wheatFarmGO = CreateAt("WheatFarm", new Vector2(-5f, 25f));
             var wheatFarmComp = wheatFarmGO.AddComponent<WheatFarm>();
             PrimitiveFactory.WheatFarm(wheatFarmGO);
 
@@ -217,12 +230,12 @@ namespace MiniMart
             // ═══════════════════════════════════════════════════════════════════
             //  PROCESSING AREA — Factory center: (0, 0, 32)
             // ═══════════════════════════════════════════════════════════════════
-            var factoryGO = CreateAt("ProcessingFactory", new Vector2(0f, 32f));
+            var factoryGO = CreateAt("ProcessingFactory", new Vector2(7f, 32f));
             PrimitiveFactory.ProcessingFactory(factoryGO);
 
 
             
-            var doughMixerGO = CreateAt("DoughMixer", new Vector2(5f, 32f));
+            var doughMixerGO = CreateAt("DoughMixer", new Vector2(7f, 30f));
             var doughMixerComp = doughMixerGO.AddComponent<Machine>();
             doughMixerComp.Type = Catalog.MachineType.DoughMixer;
             PrimitiveFactory.MachineVisual(doughMixerGO, "DoughMixer");
@@ -234,7 +247,7 @@ namespace MiniMart
             PrimitiveFactory.MachineVisual(ovenGO, "Oven");
             ovenGO.AddComponent<MachineBadge>();
 
-            var milkBottlerGO = CreateAt("MilkBottler", new Vector2(15f, 32f));
+            var milkBottlerGO = CreateAt("MilkBottler", new Vector2(9f, 30f));
             var milkBottlerComp = milkBottlerGO.AddComponent<Machine>();
             milkBottlerComp.Type = Catalog.MachineType.MilkBottler;
             PrimitiveFactory.MachineVisual(milkBottlerGO, "MilkBottler");
@@ -345,15 +358,15 @@ namespace MiniMart
                 return rack;
             }
 
-            var rackEgg     = MakeRack(Core.ItemType.Egg,           new Vector2(17f, 10f));
-            var rackTomato  = MakeRack(Core.ItemType.Tomato,        new Vector2(-13f, 10f));
-            var rackWheat   = MakeRack(Core.ItemType.Wheat,         new Vector2(1f, 10f));
-            var rackMilk    = MakeRack(Core.ItemType.Milk,          new Vector2(-10f, 8f));
+            var rackEgg     = MakeRack(Core.ItemType.Egg, new Vector2(5f, 28f));
+            var rackTomato  = MakeRack(Core.ItemType.Tomato, new Vector2(-15f, 28f));
+            var rackWheat   = MakeRack(Core.ItemType.Wheat, new Vector2(-5f, 28f));
+            var rackMilk    = MakeRack(Core.ItemType.Milk, new Vector2(-17f, 18f));
             
             // Intermediate Storage (near machines in Z=32)
-            var rackDough       = MakeRack(Core.ItemType.Dough,        new Vector2(5f, 30f));
-            var rackBread       = MakeRack(Core.ItemType.Bread,        new Vector2(2f, 49f));
-            var rackBMilk       = MakeRack(Core.ItemType.BottledMilk,  new Vector2(15f, 34f));
+            var rackDough       = MakeRack(Core.ItemType.Dough, new Vector2(7f, 28f));
+            var rackBread       = MakeRack(Core.ItemType.Bread, new Vector2(2f, 49f));
+            var rackBMilk       = MakeRack(Core.ItemType.BottledMilk, new Vector2(9f, 28f));
 
             // ═══════════════════════════════════════════════════════════════════
             //  Extended production chain (Blender/Mill/Dairy/Stove/HerbPatch/
@@ -364,31 +377,31 @@ namespace MiniMart
             //  were added. Building them here, next to their storage racks, same
             //  pattern as the original six machines above.
             // ═══════════════════════════════════════════════════════════════════
-            var blenderGO = CreateAt("Blender", new Vector2(-15f, 36f));
+            var blenderGO = CreateAt("Blender", new Vector2(-15f, 31f));
             var blenderComp = blenderGO.AddComponent<Machine>();
             blenderComp.Type = Catalog.MachineType.Blender;
             PrimitiveFactory.MachineVisual(blenderGO, "Blender");
             blenderGO.AddComponent<MachineBadge>();
-            var rackKetchup = MakeRack(Core.ItemType.TomatoKetchup, new Vector2(-15f, 38f));
+            var rackKetchup = MakeRack(Core.ItemType.TomatoKetchup, new Vector2(-15f, 33f));
 
-            var millGO = CreateAt("WheatMill", new Vector2(-10f, 36f));
+            var millGO = CreateAt("WheatMill", new Vector2(-9f, 31f));
             var millComp = millGO.AddComponent<Machine>();
             millComp.Type = Catalog.MachineType.Mill;
             PrimitiveFactory.MachineVisual(millGO, "Mill");
             millGO.AddComponent<MachineBadge>();
-            var rackFlour = MakeRack(Core.ItemType.WheatFlour, new Vector2(-10f, 38f));
+            var rackFlour = MakeRack(Core.ItemType.WheatFlour, new Vector2(-9f, 33f));
 
-            var stoveGO = CreateAt("EggStove", new Vector2(0f, 36f));
+            var stoveGO = CreateAt("EggStove", new Vector2(-2f, 31f));
             var stoveComp = stoveGO.AddComponent<Machine>();
             stoveComp.Type = Catalog.MachineType.Stove;
             PrimitiveFactory.MachineVisual(stoveGO, "Stove");
             stoveGO.AddComponent<MachineBadge>();
-            var rackFried = MakeRack(Core.ItemType.FriedEgg, new Vector2(0f, 38f));
+            var rackFried = MakeRack(Core.ItemType.FriedEgg, new Vector2(-2f, 33f));
 
-            var db1 = CreateAt("Dustbin1", new Vector2(14, 17));
+            var db1 = CreateAt("Dustbin1", new Vector2(8f, 18f));
             PrimitiveFactory.Dustbin(db1);
 
-            var db2 = CreateAt("Dustbin2", new Vector2(14, 20));
+            var db2 = CreateAt("Dustbin2", new Vector2(8f, 20f));
             PrimitiveFactory.Dustbin(db2);
 
             // ═══════════════════════════════════════════════════════════════════
@@ -410,8 +423,8 @@ namespace MiniMart
             }
 
             var playerGO = validPrefab != null
-                ? Instantiate(validPrefab, new Vector3(0, 0, 20), Quaternion.identity)
-                : CreateAt("Player", new Vector2(0, 20));
+                ? Instantiate(validPrefab, new Vector3(0, 0, 22), Quaternion.identity)
+                : CreateAt("Player", new Vector2(0, 22));
 
             var playerComp = playerGO.GetComponent<PlayerController>()
                 ?? playerGO.AddComponent<PlayerController>();
@@ -475,14 +488,14 @@ namespace MiniMart
 
             // Factory Worker — dedicated Chef class (1-arg Configure, applied later in
             // GameManager.Boot once Inventory exists).
-            var chefGO = Spawn(ChefPrefab, "FactoryWorker", new Vector2(0, 30));
+            var chefGO = Spawn(ChefPrefab, "FactoryWorker", new Vector2(-2, 30));
             var chefComp = chefGO.GetComponent<Chef>() ?? chefGO.AddComponent<Chef>();
             if (chefGO.GetComponent<WobbleAnimator>() == null) chefGO.AddComponent<WobbleAnimator>();
             if (chefGO.GetComponent<UI.CarryVisual>() == null) chefGO.AddComponent<UI.CarryVisual>();
             PrimitiveFactory.BuildCharacter(chefGO, Color.white, true);
 
             // Harvester — dedicated Farmer class.
-            var farmerGO = Spawn(FarmerPrefab, "Harvester", new Vector2(-2, 14));
+            var farmerGO = Spawn(FarmerPrefab, "Harvester", new Vector2(-2, 20));
             var farmerComp = farmerGO.GetComponent<Farmer>() ?? farmerGO.AddComponent<Farmer>();
             if (farmerGO.GetComponent<WobbleAnimator>() == null) farmerGO.AddComponent<WobbleAnimator>();
             if (farmerGO.GetComponent<UI.CarryVisual>() == null) farmerGO.AddComponent<UI.CarryVisual>();
@@ -692,32 +705,34 @@ namespace MiniMart
             for (int x = 0; x < w; x++) { pf.SetWalkable(x, 0, false); pf.SetWalkable(x, h - 1, false); }
             for (int y = 0; y < h; y++) { pf.SetWalkable(0, y, false); pf.SetWalkable(w - 1, y, false); }
 
-            // ── Store walls per the map plan (store box x -20..10, z 40..60) ──
-            // South wall z=40 with the single farm↔store service opening at x 1..9
-            // (the map's middle passage between shop floor and farm zone).
+            // ── Building walls — MUST match the visual walls in Bootstrap() ──
+            // One enclosed rectangle x[-20,10] z[14,60]. These grid blocks are what
+            // actually stop characters (visual walls are just meshes), so they and
+            // the meshes have to agree cell-for-cell or players slide into nothing.
+
+            // Interior divider z=36 (shop floor ↕ farm zone), service gap x 1..9.
             for (int wx = -20; wx <= 10; wx++)
             {
                 if (wx >= 1 && wx <= 9) continue;
-                BlockWorld(wx, 40f);
+                BlockWorld(wx, 36f);
             }
 
-            // North wall z=60: fully closed (doors moved to the side walls).
+            // North wall z=60 and South wall z=14: both fully closed.
             for (int wx = -20; wx <= 10; wx++)
+            {
                 BlockWorld(wx, 60f);
+                BlockWorld(wx, 14f);
+            }
 
-            // West wall x=-20 with the two ENTRY door gaps (z 54..56 and 44..46).
-            for (int wz = 40; wz <= 60; wz++)
+            // West wall x=-20 and East wall x=10, z[14,60], with the two door
+            // gaps (z 54..56 entry/exit-north, z 44..46 entry/exit-south). The
+            // farm-zone stretch of these walls (z 14..44) is fully closed, so the
+            // only way into the farm zone is the interior gap from the shop floor.
+            for (int wz = 14; wz <= 60; wz++)
             {
                 if (wz >= 54 && wz <= 56) continue;
                 if (wz >= 44 && wz <= 46) continue;
                 BlockWorld(-20f, wz);
-            }
-
-            // East wall x=10 with the two EXIT door gaps (z 54..56 and 44..46).
-            for (int wz = 40; wz <= 60; wz++)
-            {
-                if (wz >= 54 && wz <= 56) continue;
-                if (wz >= 44 && wz <= 46) continue;
                 BlockWorld(10f, wz);
             }
 
