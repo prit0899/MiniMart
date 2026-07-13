@@ -1,6 +1,37 @@
 # Mini Mart — Living Backlog
 **Updated:** 2026-07-04 (batch 4 — Farm-Market spec cherry-pick: store XP/level, tips, offline earnings)
 
+## Batch 40 — onboarding/settings polish + honest tester playthroughs
+User ask: play L1→max repeatedly like a non-technical tester, fix the
+"can't understand where to start" confusion, and make worker/buyer carry
+stacks show real items like the player's.
+- [x] **TesterBot** (`Engine/TesterBot.cs`): plays via player-legal inputs
+      only (tap-to-move, pad dwell, proximity). Static diary log survives
+      RunCommand chunks; DontDestroyOnLoad + player reattach so it survives
+      mart travel. Stall detector (90s no cash/level progress).
+- [x] **Run-1 finding (game-breaking): MegaMart had no open counter L6-L8**
+      — Counter 3 was a $400 L9 pad and was the scene's ONLY till, so buyers
+      could never pay: income and XP hard-stalled on arrival. Fix: Counter 3
+      ships active with MegaMart (CashCounter3UnlockLevel 9→6, gate removed);
+      Counter 4 stays the L10 upgrade. Validator asserts added.
+- [x] **Run-1 finding (deadlock): no Milk shelf in MegaMart** — SB2's
+      shelf list still had retired CannedTomato/Cookie shelves and no
+      Milk/BottledMilk. Harvested milk had nowhere to go (bot pinned at the
+      cow pen carrying 15 milk for 14 sim-minutes; a player hits the same
+      wall). Fix: shelf list now Milk + BottledMilk (fridge), retired pair
+      removed.
+- [x] **Run-1 finding (audio): virtual-channel exhaustion** — busy-store
+      coin/UI one-shots spammed "Ran out of virtual channels". Fix: AudioFx
+      per-clip 80ms throttle.
+- [x] **Carry stacks for NPCs show real item meshes** (user ask):
+      `CharacterBase.GetCarriedItems()` overridden in Shelver, Farmer,
+      Buyer, Chef; CarryVisual now renders NPC stacks with ItemMesh like
+      the player instead of flat tinted cubes.
+- [x] Onboarding (earlier in batch): UnlockGuide arrow + toast on each
+      level-up, per-station hint toasts on purchase, settings
+      vibration/graphics toggles, Layer Lab popup art.
+- [ ] Runs 2-5 + difference report in progress (Unity MCP reconnect pending).
+
 ## Batch 10 (verify on next run) — playtest integration fixes
 - [ ] **Per-source storage racks** — the single depot is gone. Egg rack by the coop, tomato+ketchup racks by the plants, wheat+flour racks by the wheat farm, milk+cheese racks by the cow, bread rack by the oven. Each shows its own live n/cap badge; racks appear with their purchase pads. Player deposits per-item at the matching rack; farmer walks to the dominant item's rack; chef withdraws/deposits at the right racks.
 - [ ] **Shelvers now physically fetch** — two-leg trip (rack → shelf) instead of withdrawing from thin air; with visible colored carry stacks.

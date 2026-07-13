@@ -21,6 +21,28 @@ namespace MiniMart.Engine
         public static readonly List<string> Log = new List<string>();
         public static void Note(string s) => Log.Add($"[{Time.timeSinceLevelLoad:F0}s] {s}");
 
+        // Unattended-run support: the diary is flushed to Logs/testerbot_run.txt
+        // every few seconds so an external QA process can follow the run without
+        // any editor scripting hooks.
+        private static string DiaryPath =>
+            System.IO.Path.GetFullPath(Application.dataPath + "/../Logs/testerbot_run.txt");
+        private float nextFlushAt;
+
+        private void FlushDiary(MiniMart.GameManager gm)
+        {
+            try
+            {
+                string scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                var lines = new List<string>(Log.Count + 1)
+                {
+                    $"STATUS L{gm.StoreLevel} ${gm.Economy.PlayerCash:F0} xp={gm.StoreXp}/{gm.XpToNextLevel} scene={scene} t={Time.timeSinceLevelLoad:F0}s real={Time.realtimeSinceStartup:F0}s"
+                };
+                lines.AddRange(Log);
+                System.IO.File.WriteAllLines(DiaryPath, lines);
+            }
+            catch { /* diary must never break the run */ }
+        }
+
         private PlayerController player;
         private float decideAt;
         private float lastCash;
@@ -33,6 +55,9 @@ namespace MiniMart.Engine
         {
             // Survive travel between marts, like the player's thumbs do.
             DontDestroyOnLoad(gameObject);
+            // Accelerated soak: all game logic is dt-based, so 3x wall speed
+            // changes nothing about the simulation, only how long QA waits.
+            Time.timeScale = 3f;
             player = FindAnyObjectByType<PlayerController>();
             var gm = MiniMart.GameManager.Instance;
             lastCash = gm != null ? gm.Economy.PlayerCash : 0f;
@@ -54,6 +79,12 @@ namespace MiniMart.Engine
                 }
             }
             if (gm == null || player == null) return;
+
+            if (Time.unscaledTime >= nextFlushAt)
+            {
+                nextFlushAt = Time.unscaledTime + 5f;
+                FlushDiary(gm);
+            }
 
             // Milestones + stall detection.
             if (gm.StoreLevel != lastLevel)
@@ -161,6 +192,12 @@ namespace MiniMart.Engine
             // at the processing strip, else wander to the store to man the till.
             var counter = gm.Counters != null && gm.Counters.Count > 0 ? gm.Counters[0] : null;
             if (counter != null) Go(counter.transform.position);
+        }
+
+        private void OnDestroy()
+        {
+            // Leaving play mode must never strand the editor at 3x.
+            Time.timeScale = 1f;
         }
 
         private void Go(Vector3 pos) => player.SetTarget(pos);

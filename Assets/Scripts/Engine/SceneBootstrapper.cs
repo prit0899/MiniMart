@@ -28,6 +28,21 @@ namespace MiniMart
 
         private void Awake()
         {
+#if UNITY_EDITOR
+            // QA hook: marker files in Logs/ drive unattended tester runs when
+            // the editor can't be scripted externally. `testerbot.freshrun`
+            // wipes the save (consumed once); `testerbot.enabled` spawns the bot.
+            string logsDir = System.IO.Path.GetFullPath(Application.dataPath + "/../Logs");
+            string fresh = System.IO.Path.Combine(logsDir, "testerbot.freshrun");
+            if (System.IO.File.Exists(fresh))
+            {
+                MiniMart.Save.SaveSystem.Delete();
+                System.IO.File.Delete(fresh);
+            }
+            if (System.IO.File.Exists(System.IO.Path.Combine(logsDir, "testerbot.enabled"))
+                && FindAnyObjectByType<Engine.TesterBot>() == null)
+                new GameObject("TesterBot").AddComponent<Engine.TesterBot>();
+#endif
             // ═══════════════════════════════════════════════════════════════════
             //  CAMERA SETUP (must happen in Awake so Camera.main is valid)
             // ═══════════════════════════════════════════════════════════════════

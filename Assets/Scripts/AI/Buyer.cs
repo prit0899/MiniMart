@@ -52,6 +52,15 @@ namespace MiniMart.AI
         private float shopWait;         // time spent waiting for an out-of-stock item to restock
         private float shopPatienceSeconds;
 
+        /// <summary>Real item meshes in the carry stack, same as the player.</summary>
+        public override List<ItemType> GetCarriedItems()
+        {
+            var list = new List<ItemType>();
+            foreach (var kv in Collected)
+                for (int i = 0; i < kv.Value; i++) list.Add(kv.Key);
+            return list;
+        }
+
         public void Init(int currentPlayerLevel, List<ShopShelf> shelves, List<Economy.CashCounter> cashCounters)
         {
             Role = RoleType.Buyer;

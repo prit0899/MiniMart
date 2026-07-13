@@ -102,12 +102,19 @@ namespace MiniMart.UI
             if (character == null) return;
             int count = Mathf.Min(character.CarryCount, icons.Length);
 
-            // Build per-item color list for the player (mixed stack support).
-            // For NPCs (no PlayerInteraction), fall back to the single CarryColor.
+            // Build the exact per-item list: PlayerInteraction for the player,
+            // CharacterBase.GetCarriedItems() for NPCs (Shelver/Farmer/Buyer/Chef
+            // override it) — everyone stacks real item meshes, same as the player.
             System.Collections.Generic.List<Core.ItemType> itemList = null;
             var pi = GetComponent<PlayerInteraction>();
             if (pi != null)
                 itemList = pi.GetCarriedItems();
+            else
+            {
+                var npcItems = character.GetCarriedItems();
+                if (npcItems != null && npcItems.Count > 0)
+                    itemList = npcItems;
+            }
 
             // Detect whether we need to redraw: count changed, color changed, or
             // the item composition changed (for mixed stacks).

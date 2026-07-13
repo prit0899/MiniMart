@@ -108,6 +108,15 @@ namespace MiniMart.Characters
                 if (i == item) return true;
             return false;
         }
+
+        /// <summary>Real item meshes in the carry stack, same as the player.</summary>
+        public override List<ItemType> GetCarriedItems()
+        {
+            var list = new List<ItemType>();
+            if (pendingShelf != null)
+                for (int i = 0; i < CarryCount; i++) list.Add(pendingShelf.Item);
+            return list;
+        }
     }
 
     /// <summary>A physical shelf slot in the shop floor that buyers pull stock from.

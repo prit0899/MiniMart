@@ -57,6 +57,19 @@ namespace MiniMart.Characters
             return false;
         }
 
+        /// <summary>Real item meshes in the carry stack, same as the player.</summary>
+        public override System.Collections.Generic.List<ItemType> GetCarriedItems()
+        {
+            var list = new System.Collections.Generic.List<ItemType>();
+            void Add(ItemType t, int n) { for (int i = 0; i < n; i++) list.Add(t); }
+            Add(ItemType.Egg, eggsCount);
+            Add(ItemType.Wheat, wheatCount);
+            Add(ItemType.Tomato, tomatoCount);
+            Add(ItemType.Milk, milkCount);
+            Add(ItemType.Herb, herbCount);
+            return list;
+        }
+
         public void DropAllFarmer()
         {
             DropAll();
