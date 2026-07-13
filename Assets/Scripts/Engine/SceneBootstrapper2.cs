@@ -90,15 +90,22 @@ namespace MiniMart
 
             PrimitiveFactory.GrassGround(new Vector3(0f, 0, 20f), 80f, 40f);
             PrimitiveFactory.GrassGround(new Vector3(0f, 0, 61f), 80f, 2f);
+            PrimitiveFactory.GrassGround(new Vector3(0f, 0, 50f), 80f, 20f);
             PrimitiveFactory.StoreFloor(new Vector3(0f, 0, 50f), 40f, 20f);
             PrimitiveFactory.Road(new Vector3(0f, 0, 70f), 80f, 16f);
             PrimitiveFactory.TreePerimeter(-40f, 40f, 0f, 82f, 3.4f);
 
-            PrimitiveFactory.Wall("Wall_South", new Vector3(0f, 0, 40f), new Vector3(40f, 0.85f, 0.3f));
-            PrimitiveFactory.Wall("Wall_North", new Vector3(0f, 0, 60f), new Vector3(40f, 0.85f, 0.3f));
-            PrimitiveFactory.Wall("Wall_West", new Vector3(-20f, 0, 50f), new Vector3(0.3f, 0.85f, 20f));
-            PrimitiveFactory.Wall("Wall_East", new Vector3(20f, 0, 50f), new Vector3(0.3f, 0.85f, 20f));
-            PrimitiveFactory.StripedGate(new Vector3(-20f, 0, 55f), 5f);
+            // Same core plan as Mart 1 (user map): entries WEST, exits EAST,
+            // north closed, south wall keeps the farm service gap at x 1..9.
+            PrimitiveFactory.Wall("Wall_South_A", new Vector3(-9.5f, 0, 40f), new Vector3(21f, 0.85f, 0.3f));
+            PrimitiveFactory.Wall("Wall_South_B", new Vector3(14.5f, 0, 40f), new Vector3(11f, 0.85f, 0.3f));
+            PrimitiveFactory.Wall("Wall_North",   new Vector3(0f, 0, 60f), new Vector3(40f, 0.85f, 0.3f));
+            PrimitiveFactory.Wall("Wall_West_S",  new Vector3(-20f, 0, 42f),   new Vector3(0.3f, 0.85f, 4f));
+            PrimitiveFactory.Wall("Wall_West_M",  new Vector3(-20f, 0, 50f),   new Vector3(0.3f, 0.85f, 8f));
+            PrimitiveFactory.Wall("Wall_West_N",  new Vector3(-20f, 0, 58.5f), new Vector3(0.3f, 0.85f, 3f));
+            PrimitiveFactory.Wall("Wall_East_S",  new Vector3(20f, 0, 42f),    new Vector3(0.3f, 0.85f, 4f));
+            PrimitiveFactory.Wall("Wall_East_M",  new Vector3(20f, 0, 50f),    new Vector3(0.3f, 0.85f, 8f));
+            PrimitiveFactory.Wall("Wall_East_N",  new Vector3(20f, 0, 58.5f),  new Vector3(0.3f, 0.85f, 3f));
 
             var pfGO = new GameObject("Pathfinder");
             var pfComp = pfGO.AddComponent<GridPathfinder>();
@@ -110,15 +117,15 @@ namespace MiniMart
             mapGO.AddComponent<MapLayout>();
 
             // Farms
-            var cornFieldGO = CreateAt("CornField", new Vector2(16f, 8f));
+            var cornFieldGO = CreateAt("CornField", new Vector2(6f, 10f));
             var cornFieldComp = cornFieldGO.AddComponent<CornField>();
             PrimitiveFactory.CornField(cornFieldGO);
 
-            var appleOrchardGO = CreateAt("AppleOrchard", new Vector2(16f, 12f));
+            var appleOrchardGO = CreateAt("AppleOrchard", new Vector2(-4f, 10f));
             var appleOrchardComp = appleOrchardGO.AddComponent<AppleOrchard>();
             PrimitiveFactory.AppleOrchard(appleOrchardGO);
 
-            var herbPatchGO = CreateAt("HerbPatch", new Vector2(20f, 12f));
+            var herbPatchGO = CreateAt("HerbPatch", new Vector2(16f, 10f));
             var herbPatchComp = herbPatchGO.AddComponent<HerbPatch>();
             PrimitiveFactory.HerbPatch(herbPatchGO);
 
@@ -135,11 +142,11 @@ namespace MiniMart
             // (Tomato Canner and Cookie Line are retired: their raw inputs —
             // tomatoes and wheat — only exist in Mart 1, so here they could
             // never be loaded.)
-            var cowPenGO = CreateAt("CowPen", new Vector2(-12f, 10f));
+            var cowPenGO = CreateAt("CowPen", new Vector2(-14f, 10f));
             var cowPenComp = cowPenGO.AddComponent<CowPen>();
             PrimitiveFactory.CowPen(cowPenGO);
 
-            var hayTroughGO = CreateAt("HayFeedTrough", new Vector2(-12f, 12f));
+            var hayTroughGO = CreateAt("HayFeedTrough", new Vector2(-14f, 13f));
             var hayTroughComp = hayTroughGO.AddComponent<HayFeedTrough>();
             hayTroughComp.LinkedCow = cowPenComp;
             cowPenComp.FedBy = hayTroughComp;
@@ -187,37 +194,37 @@ namespace MiniMart
                 return rack;
             }
 
-            var rackCorn    = MakeRack(Core.ItemType.Corn,          new Vector2(18f, 6f));
-            var rackApple   = MakeRack(Core.ItemType.Apple,         new Vector2(18f, 10f));
-            var rackHerb    = MakeRack(Core.ItemType.Herb,          new Vector2(22f, 14f));
-            var rackMilk    = MakeRack(Core.ItemType.Milk,          new Vector2(-16f, 10f));
+            var rackCorn    = MakeRack(Core.ItemType.Corn,          new Vector2(9f, 10f));
+            var rackApple   = MakeRack(Core.ItemType.Apple,         new Vector2(-1f, 10f));
+            var rackHerb    = MakeRack(Core.ItemType.Herb,          new Vector2(19f, 10f));
+            var rackMilk    = MakeRack(Core.ItemType.Milk,          new Vector2(-17f, 10f));
             var rackBMilk   = MakeRack(Core.ItemType.BottledMilk,   new Vector2(-10f, 34f));
             var rackPCorn   = MakeRack(Core.ItemType.ProcessedCorn, new Vector2(-5f, 34f));
             var rackCheese  = MakeRack(Core.ItemType.Cheese,        new Vector2(0f, 34f));
             var rackHerbPk  = MakeRack(Core.ItemType.HerbPack,      new Vector2(5f, 34f));
             var rackCoffee  = MakeRack(Core.ItemType.Coffee,        new Vector2(15f, 34f));
 
-            var cc3GO = CreateAt("CashCounter3", new Vector2(-10f, 55f));
+            var cc3GO = CreateAt("CashCounter3", new Vector2(-16f, 51f));
             var cc3Comp = cc3GO.AddComponent<CashCounter>();
             cc3Comp.CounterIndex = 3;
             PrimitiveFactory.CashCounter(cc3GO);
 
-            var cc4GO = CreateAt("CashCounter4", new Vector2(-10f, 50f));
+            var cc4GO = CreateAt("CashCounter4", new Vector2(17f, 46f));
             var cc4Comp = cc4GO.AddComponent<CashCounter>();
             cc4Comp.CounterIndex = 4;
             PrimitiveFactory.CashCounter(cc4GO);
 
             var shelvesList = new List<ShopShelf>();
             Vector2[] shelfPositions = {
-                new Vector2(-6, 50),   // Apple
-                new Vector2(-2, 50),   // Corn
-                new Vector2(2, 50),    // ProcessedCorn
-                new Vector2(6, 50),    // CannedTomato
-                new Vector2(10, 50),   // Cheese
-                new Vector2(14, 55),   // Herb
-                new Vector2(18, 55),   // HerbPack
-                new Vector2(22, 55),   // Cookie
-                new Vector2(26, 55),   // Coffee
+                new Vector2(-14, 57),  // Apple        (top row, map style)
+                new Vector2(-7, 57),   // Corn
+                new Vector2(0, 57),    // ProcessedCorn
+                new Vector2(-10, 52),  // Milk         (middle)
+                new Vector2(7, 57),    // Cheese       (top row)
+                new Vector2(2, 52),    // Herb         (middle)
+                new Vector2(14, 57),   // HerbPack     (top row)
+                new Vector2(10, 52),   // BottledMilk  (middle, fridge)
+                new Vector2(0, 47),    // Coffee       (lower center)
             };
             // Milk/BottledMilk replaced the retired CannedTomato/Cookie chains
             // when the milk line moved into MegaMart (found by TesterBot run 1:
@@ -244,10 +251,14 @@ namespace MiniMart
                 else PrimitiveFactory.ShelfUnit(sGO, itemCol);
             }
 
-            var entryDoor = CreateAt("EntryDoor", new Vector2(-10f, 60.5f));
-            PrimitiveFactory.Door(entryDoor, true);
-            var exitDoor = CreateAt("ExitDoor", new Vector2(-13f, 60.5f));
-            PrimitiveFactory.Door(exitDoor, false);
+            var entryDoorN = CreateAt("EntryDoor", new Vector2(-20f, 55f));
+            PrimitiveFactory.Door(entryDoorN, true);
+            var entryDoorS = CreateAt("EntryDoor2", new Vector2(-20f, 45f));
+            PrimitiveFactory.Door(entryDoorS, true);
+            var exitDoorN = CreateAt("ExitDoor", new Vector2(20f, 55f));
+            PrimitiveFactory.Door(exitDoorN, false);
+            var exitDoorS = CreateAt("ExitDoor2", new Vector2(20f, 45f));
+            PrimitiveFactory.Door(exitDoorS, false);
 
             var db1 = CreateAt("Dustbin1", new Vector2(14, 17));
             PrimitiveFactory.Dustbin(db1);
@@ -289,9 +300,9 @@ namespace MiniMart
             PrimitiveFactory.BuildCharacter(shelver2GO, new Color(0.85f, 0.2f, 0.85f), PrimitiveFactory.CharacterRole.Shelver);
 
             var buyerSpawn = new GameObject("BuyerSpawnSpot");
-            buyerSpawn.transform.position = new Vector3(-10, 0, 74f);
+            buyerSpawn.transform.position = new Vector3(-28f, 0, 66f);
             var buyerExit = new GameObject("BuyerExitSpot");
-            buyerExit.transform.position = new Vector3(20f, 0, 74f);
+            buyerExit.transform.position = new Vector3(26f, 0, 66f);
 
             var spawnerGO = new GameObject("BuyerSpawner");
             var spawnerComp = spawnerGO.AddComponent<BuyerSpawner>();
@@ -374,7 +385,7 @@ namespace MiniMart
             Gate(280f, 10, "Coffee Bar",   coffeeGO, ShelfOf(Core.ItemType.Coffee)?.gameObject, rackCoffee.gameObject);
             Gate(500f, 10, "Counter 4",    cc4GO);
 
-            SceneTransition.Create(new Vector3(-15f, 0, 50f), "Game", "Return to MiniMart");
+            SceneTransition.Create(new Vector3(-25f, 0, 50f), "Game", "Return to MiniMart");
 
             if (!MiniMart.Save.SaveSystem.HasSave())
                 new GameObject("TutorialGuide").AddComponent<TutorialGuide>();
@@ -415,21 +426,25 @@ namespace MiniMart
                 BlockWorld(wx, 40f);
             }
 
+            // North wall z=60: fully closed (doors moved to the side walls).
             for (int wx = -20; wx <= 20; wx++)
-            {
-                if (wx >= -11 && wx <= -9) continue;
-                if (wx >= -14 && wx <= -12) continue;
                 BlockWorld(wx, 60f);
-            }
 
+            // West wall x=-20 with the two ENTRY door gaps (z 54..56 and 44..46).
             for (int wz = 40; wz <= 60; wz++)
             {
-                if (wz >= 53 && wz <= 57) continue;
+                if (wz >= 54 && wz <= 56) continue;
+                if (wz >= 44 && wz <= 46) continue;
                 BlockWorld(-20f, wz);
             }
 
+            // East wall x=20 with the two EXIT door gaps (z 54..56 and 44..46).
             for (int wz = 40; wz <= 60; wz++)
+            {
+                if (wz >= 54 && wz <= 56) continue;
+                if (wz >= 44 && wz <= 46) continue;
                 BlockWorld(20f, wz);
+            }
         }
 
         private static GameObject CreateAt(string name, Vector2 pos)

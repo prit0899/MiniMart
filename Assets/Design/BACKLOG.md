@@ -1,6 +1,32 @@
 # Mini Mart — Living Backlog
 **Updated:** 2026-07-04 (batch 4 — Farm-Market spec cherry-pick: store XP/level, tips, offline earnings)
 
+## Batch 41 — hand-drawn map layout + wall integrity
+User supplied a hand-drawn map (Refer/map-plan-mart1.pdf): entries on the
+west wall, exits east, one counter per side, specific shelf arrangement,
+bread oven ON the shop floor with its shelf, farm zone behind the south
+wall with one middle gap, van unchanged, and a hard rule that NOBODY can
+pass through walls. Same core plan for every mart.
+- [x] **Mart 1 rebuilt to the map**: 2 west entry doors + 2 east exit
+      doors (gaps z 54-56 / 44-46), Counter 1 left (-16,51), Counter 2
+      right (7,46), shelves per drawing (ketchup TL, flour TC, wheat TR,
+      tomato center, oven+bread shelf together on the floor, egg row),
+      farms reordered tomato→wheat→hen, racks follow sources, buyers walk
+      in from the road's west end and leave east. Van chain untouched.
+- [x] **MegaMart mirrored to the same core plan** (its items/sources);
+      return travel pad moved outside the west wall (its old spot is now
+      Counter 3). Grid walls + visual walls rebuilt to MATCH each other
+      (old scene had grid walls 20 units past the visible store and an
+      exit door inside a wall segment).
+- [x] **Anti-teleport guard** in CharacterBase.MoveTowardsTarget: every
+      step is checked against the walkability grid with axis-slide, so
+      the no-path fallback can no longer cross walls (player joystick
+      already respected the grid).
+- [x] **Validated live**: fresh-save bot run on the new layout reached
+      L6 on normal pacing (L2@136s..L6@3423s), bought the travel pad,
+      exited through the east doors and arrived in MegaMart earning.
+- [x] TMP Essential Resources imported (silences the in-game error bar).
+
 ## Batch 40 — onboarding/settings polish + honest tester playthroughs
 User ask: play L1→max repeatedly like a non-technical tester, fix the
 "can't understand where to start" confusion, and make worker/buyer carry

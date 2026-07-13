@@ -182,6 +182,26 @@ namespace MiniMart.Characters
             
             // Keep grounded
             next.y = 0;
+
+            // Hard wall rule (map plan): NOBODY passes through an unwalkable cell —
+            // not the player, shelvers, chef, farmer, or buyers. A* normally avoids
+            // walls, but the no-path fallback walks straight at the goal; block that
+            // here with the same axis-slide the joystick uses, else stop the walk.
+            var pfGuard = Map.GridPathfinder.Instance;
+            if (pfGuard != null && !pfGuard.IsWalkableWorld(next))
+            {
+                var slideX = new Vector3(next.x, 0, pos.z);
+                var slideZ = new Vector3(pos.x, 0, next.z);
+                if (pfGuard.IsWalkableWorld(slideX)) next = slideX;
+                else if (pfGuard.IsWalkableWorld(slideZ)) next = slideZ;
+                else
+                {
+                    hasTarget = false;
+                    State = CharacterState.Idle;
+                    OnArrived();
+                    return;
+                }
+            }
             
             var cc = GetComponent<CharacterController>();
             if (cc != null)
