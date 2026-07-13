@@ -123,6 +123,10 @@ namespace MiniMart.Engine
             PurchasePad pad = null;
             foreach (var p in FindObjectsByType<PurchasePad>(FindObjectsSortMode.None))
             {
+                // Check MinLevel directly: on the first frame after a scene load
+                // the pads haven't hidden their locked children yet, so the
+                // visibility check alone briefly sees every pad.
+                if (p.MinLevel > gm.StoreLevel) continue;
                 if (p.transform.childCount == 0 || !p.transform.GetChild(0).gameObject.activeSelf) continue;
                 if (p.Cost > gm.Economy.PlayerCash) continue;
                 if (pad == null || p.Cost < pad.Cost) pad = p;

@@ -30,7 +30,13 @@ stacks show real items like the player's.
 - [x] Onboarding (earlier in batch): UnlockGuide arrow + toast on each
       level-up, per-station hint toasts on purchase, settings
       vibration/graphics toggles, Layer Lab popup art.
-- [ ] Runs 2-5 + difference report in progress (Unity MCP reconnect pending).
+- [x] **All 5 playthroughs complete.** Run 1: full L1→L10 max-level run.
+      Runs 2-5: fresh-save early-game runs to L6 (2 continued to L8). Level
+      timings tight across runs (±15%) except the L8+ pacing cliff. Full
+      table + open findings in QA_PLAYTHROUGH_REPORT.md (same folder).
+- [ ] Open findings for next batch: level-up popup auto-dismiss, late-game
+      pacing (thin MegaMart buyer traffic / XP curve above L7), phone-order
+      quantity caps, 1-frame locked-pad flash, carry-wedge soft cap.
 
 ## Batch 10 (verify on next run) — playtest integration fixes
 - [ ] **Per-source storage racks** — the single depot is gone. Egg rack by the coop, tomato+ketchup racks by the plants, wheat+flour racks by the wheat farm, milk+cheese racks by the cow, bread rack by the oven. Each shows its own live n/cap badge; racks appear with their purchase pads. Player deposits per-item at the matching rack; farmer walks to the dominant item's rack; chef withdraws/deposits at the right racks.
