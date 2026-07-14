@@ -173,6 +173,13 @@ namespace MiniMart
             pfComp.Initialize(100, 82, 1f);
             BuildBoundaryWalls(pfComp);
 
+            // Bake the navigation mesh AFTER every wall is stamped into the grid:
+            // it merges the walkable cells into convex polygons + portals, which is
+            // what lets workers walk smooth diagonals instead of 90° staircases.
+            var navGO = new GameObject("NavMesh");
+            var nav = navGO.AddComponent<Map.NavMesh>();
+            nav.Bake(pfComp);
+
             // Map layout
             var mapGO = new GameObject("MapLayout");
             mapGO.AddComponent<MapLayout>();

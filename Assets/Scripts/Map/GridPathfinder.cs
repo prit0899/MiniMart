@@ -53,6 +53,9 @@ namespace MiniMart.Map
                         0f,
                         GridOrigin.z + y * CellSize + CellSize * 0.5f);
 
+        /// <summary>Cell-level walkability — used by the NavMesh baker.</summary>
+        public bool IsWalkableCell(int x, int y) => InBounds(x, y) && walkable[x, y];
+
         /// <summary>True when the world position sits on a walkable cell.</summary>
         public bool IsWalkableWorld(Vector3 world)
         {

@@ -112,32 +112,51 @@ namespace MiniMart.Characters
         protected System.Collections.Generic.List<Vector3> pathWaypoints = new System.Collections.Generic.List<Vector3>();
         protected int currentWaypointIndex = 0;
 
+        // ── Steering state ───────────────────────────────────────────────────
+        /// <summary>Current velocity (XZ). Steering forces accumulate into this,
+        /// which is what gives movement its weight and smooth turns.</summary>
+        protected Vector3 velocity;
+
+        /// <summary>How hard the agent can change its mind, in units/s². Higher =
+        /// snappier, lower = more momentum. Tuned so workers bank into corners.</summary>
+        protected float maxForce = 22f;
+
+        /// <summary>Degrees/second the body turns to face its heading.</summary>
+        protected float turnSpeed = 540f;
+
+        /// <summary>Every live character — used for agent-vs-agent separation.</summary>
+        public static readonly System.Collections.Generic.List<CharacterBase> All =
+            new System.Collections.Generic.List<CharacterBase>();
+
         public void SetTarget(Vector3 worldPos)
         {
-            // Lock Y to 0 for flat ground movement
             target = new Vector3(worldPos.x, 0, worldPos.z);
             hasTarget = true;
             State = CharacterState.Walking;
+            currentWaypointIndex = 0;
+
+            // Preferred: nav-mesh A* + funnel → a handful of REAL corner points, so
+            // the agent walks natural diagonals. Falls back to the old grid A* (and
+            // finally a straight line) only if the mesh isn't baked.
+            var nav = NavMesh.Instance;
+            if (nav != null)
+            {
+                pathWaypoints = nav.FindPath(transform.position, target);
+                if (pathWaypoints != null && pathWaypoints.Count > 0) return;
+            }
 
             if (GridPathfinder.Instance != null)
             {
                 pathWaypoints = GridPathfinder.Instance.FindPath(transform.position, target);
-                currentWaypointIndex = 0;
-                // If path is empty, just add target directly
-                if (pathWaypoints == null || pathWaypoints.Count == 0)
-                {
-                    pathWaypoints = new System.Collections.Generic.List<Vector3> { target };
-                }
+                if (pathWaypoints != null && pathWaypoints.Count > 0) return;
             }
-            else
-            {
-                pathWaypoints = new System.Collections.Generic.List<Vector3> { target };
-                currentWaypointIndex = 0;
-            }
+
+            pathWaypoints = new System.Collections.Generic.List<Vector3> { target };
         }
 
         protected virtual void Start()
         {
+            if (!All.Contains(this)) All.Add(this);
             if (GameManager.Instance != null)
                 GameManager.Instance.RegisterCharacter(this);
 
@@ -147,6 +166,7 @@ namespace MiniMart.Characters
 
         protected virtual void OnDestroy()
         {
+            All.Remove(this);
             if (GameManager.Instance != null)
                 GameManager.Instance.UnregisterCharacter(this);
         }
@@ -167,71 +187,88 @@ namespace MiniMart.Characters
         {
             if (pathWaypoints == null || pathWaypoints.Count == 0 || currentWaypointIndex >= pathWaypoints.Count)
             {
-                hasTarget = false;
-                State = CharacterState.Idle;
-                OnArrived();
+                Stop();
                 return;
             }
 
-            Vector3 nextTarget = pathWaypoints[currentWaypointIndex];
-            nextTarget.y = 0;
+            Vector3 pos = transform.position; pos.y = 0f;
+            Vector3 wp  = pathWaypoints[currentWaypointIndex]; wp.y = 0f;
+            bool lastLeg = currentWaypointIndex == pathWaypoints.Count - 1;
 
-            Vector3 pos = transform.position;
-            pos.y = 0;
-            Vector3 next = Vector3.MoveTowards(pos, nextTarget, CurrentSpeed * dt);
-            
-            // Keep grounded
-            next.y = 0;
+            float maxSpeed = CurrentSpeed;
 
-            // Hard wall rule (map plan): NOBODY passes through an unwalkable cell —
-            // not the player, shelvers, chef, farmer, or buyers. A* normally avoids
-            // walls, but the no-path fallback walks straight at the goal; block that
-            // here with the same axis-slide the joystick uses, else stop the walk.
-            var pfGuard = Map.GridPathfinder.Instance;
-            if (pfGuard != null && !pfGuard.IsWalkableWorld(next))
+            // ── Steering: blend the behaviours, don't just point-and-shoot ─────
+            // Seek the next corner; ease into the FINAL one so we settle instead of
+            // overshooting. Separation keeps workers from walking through each other,
+            // and the wall feelers round them off obstacles. Summing forces (rather
+            // than snapping the heading) is what makes the motion read as natural.
+            Vector3 force = lastLeg
+                ? Steering.Arrive(pos, velocity, wp, maxSpeed, ArriveRadius)
+                : Steering.Seek(pos, velocity, wp, maxSpeed);
+
+            force += Steering.Separation(pos, All, this, SeparationRadius, maxSpeed) * SeparationWeight;
+            force += Steering.AvoidWalls(pos, velocity, Map.GridPathfinder.Instance, maxSpeed) * AvoidWeight;
+
+            velocity += Steering.Clamp(force, maxForce) * dt;
+            velocity.y = 0f;
+            velocity = Vector3.ClampMagnitude(velocity, maxSpeed);
+
+            Vector3 next = pos + velocity * dt;
+            next.y = 0f;
+
+            // Hard wall rule (map plan): NOBODY crosses an unwalkable cell. The mesh
+            // path already stays inside walkable polys, so this only catches the
+            // fallback/no-path case. Slide along the wall instead of stopping dead.
+            var grid = Map.GridPathfinder.Instance;
+            if (grid != null && !grid.IsWalkableWorld(next))
             {
-                var slideX = new Vector3(next.x, 0, pos.z);
-                var slideZ = new Vector3(pos.x, 0, next.z);
-                if (pfGuard.IsWalkableWorld(slideX)) next = slideX;
-                else if (pfGuard.IsWalkableWorld(slideZ)) next = slideZ;
-                else
-                {
-                    hasTarget = false;
-                    State = CharacterState.Idle;
-                    OnArrived();
-                    return;
-                }
+                var slideX = new Vector3(next.x, 0f, pos.z);
+                var slideZ = new Vector3(pos.x, 0f, next.z);
+                if (grid.IsWalkableWorld(slideX)) { next = slideX; velocity.z = 0f; }
+                else if (grid.IsWalkableWorld(slideZ)) { next = slideZ; velocity.x = 0f; }
+                else { Stop(); return; }
             }
-            
+
             var cc = GetComponent<CharacterController>();
-            if (cc != null)
-            {
-                cc.Move(next - pos);
-            }
+            if (cc != null) cc.Move(next - pos);
             else
             {
                 var rb = GetComponent<Rigidbody>();
                 if (rb != null && !rb.isKinematic) rb.MovePosition(next);
                 else transform.position = next;
             }
-            
-            // Optional: Rotate character to face movement direction
-            if ((next - pos).sqrMagnitude > 0.001f)
-            {
-                transform.rotation = Quaternion.LookRotation(next - pos, Vector3.up);
-            }
-            
-            if (Vector3.Distance(next, nextTarget) < 0.15f)
+
+            // Turn the body toward where we're actually going, smoothly.
+            if (velocity.sqrMagnitude > 0.02f)
+                transform.rotation = Quaternion.RotateTowards(
+                    transform.rotation,
+                    Quaternion.LookRotation(velocity, Vector3.up),
+                    turnSpeed * dt);
+
+            // Advance along the path. Non-final corners can be clipped generously —
+            // we're rounding them, not stopping on them.
+            float reach = lastLeg ? 0.18f : NavMesh.AgentRadius + 0.15f;
+            if ((next - wp).sqrMagnitude <= reach * reach)
             {
                 currentWaypointIndex++;
-                if (currentWaypointIndex >= pathWaypoints.Count)
-                {
-                    hasTarget = false;
-                    State = CharacterState.Idle;
-                    OnArrived();
-                }
+                if (currentWaypointIndex >= pathWaypoints.Count) Stop();
             }
         }
+
+        /// <summary>Come to rest and fire OnArrived once.</summary>
+        private void Stop()
+        {
+            velocity = Vector3.zero;
+            hasTarget = false;
+            State = CharacterState.Idle;
+            OnArrived();
+        }
+
+        /// <summary>Distance at which we start easing to a halt.</summary>
+        protected virtual float ArriveRadius => 1.2f;
+        protected virtual float SeparationRadius => 1.1f;
+        protected virtual float SeparationWeight => 0.9f;
+        protected virtual float AvoidWeight => 1.3f;
 
         protected virtual void OnArrived() { }
 
