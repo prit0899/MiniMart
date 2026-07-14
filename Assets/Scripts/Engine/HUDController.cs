@@ -60,6 +60,11 @@ namespace MiniMart.UI
         public Text LevelUpLabel;
         public Button LevelUpOkButton;
         private int lastSeenStoreLevel = -1;
+        // The popup auto-closes after this many unscaled seconds if the player
+        // doesn't tap AWESOME — otherwise it sits over the shop forever (a QA
+        // playthrough left it covering screen-centre for ~30 minutes).
+        private const float LevelUpAutoHideSeconds = 6f;
+        private float levelUpHideAt = -1f;
 
         private GameManager gm;
         private Engine.PhoneOrderManager phoneOrders;
@@ -95,7 +100,11 @@ namespace MiniMart.UI
                 OfflinePanel?.SetActive(false);
             });
 
-            LevelUpOkButton?.onClick.AddListener(() => LevelUpPanel?.SetActive(false));
+            LevelUpOkButton?.onClick.AddListener(() =>
+            {
+                LevelUpPanel?.SetActive(false);
+                levelUpHideAt = -1f;
+            });
 
             PauseOverlay?.SetActive(false);
             SettingsPanel?.SetActive(false);
@@ -142,7 +151,15 @@ namespace MiniMart.UI
                         ? "MART COMPLETE!\n\nYou built the whole mini mart —\nevery upgrade is yours. Amazing!"
                         : $"Store Level {gm.StoreLevel}\n\n{UnlockTextFor(gm.StoreLevel)}";
                 LevelUpPanel?.SetActive(true);
+                levelUpHideAt = Time.unscaledTime + LevelUpAutoHideSeconds;
                 AudioFx.LevelUp();
+            }
+
+            // Auto-dismiss the level-up popup so it never blocks the shop.
+            if (levelUpHideAt > 0f && Time.unscaledTime >= levelUpHideAt)
+            {
+                LevelUpPanel?.SetActive(false);
+                levelUpHideAt = -1f;
             }
 
             // Show the welcome-back report once, when the boot computed one.

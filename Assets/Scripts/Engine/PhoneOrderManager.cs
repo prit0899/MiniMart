@@ -134,8 +134,16 @@ namespace MiniMart.Engine
             // GDD 9.1: quantities must be FULFILLABLE — capped by each item's storage capacity.
             // The $45-$300 payout is a wholesale premium on top of the tiny retail prices,
             // not a sum of them (a 15-egg storage could never add up to $45 at $0.05/egg).
+            // Keep orders FULFILLABLE at a realistic production rate. Quantities
+            // used to run all the way up to each item's storage cap (~20), so late
+            // orders demanded "14x BottledMilk" or "15 Herb + 7 Corn + 3 Milk" —
+            // impossible to fill inside the window (QA finding). Cap each line to a
+            // small amount and the whole order to a modest item budget.
+            const int MaxPerLine = 8;
+            const int MaxTotalItems = 12;
             int typeCount = Mathf.Min(available.Count, Random.Range(1, 4)); // 1-3 item types
             float retailTotal = 0f;
+            int totalItems = 0;
             for (int t = 0; t < typeCount; t++)
             {
                 var item = available[Random.Range(0, available.Count)];
@@ -145,8 +153,12 @@ namespace MiniMart.Engine
                 if (Inventory != null && Inventory.Stocks.TryGetValue(item, out var stock))
                     cap = stock.MaxCapacity;
 
-                int qty = Random.Range(3, Mathf.Max(4, cap + 1)); // 3..cap, always <= storage cap
+                int budget = MaxTotalItems - totalItems;
+                if (budget < 2) break;                       // order is already full enough
+                int lineMax = Mathf.Min(MaxPerLine, cap, budget);
+                int qty = Random.Range(2, lineMax + 1);      // 2..min(8, cap, remaining budget)
                 order.Items[item] = qty;
+                totalItems += qty;
                 float unit = Economy != null ? Economy.GetUnitPrice(item) : PriceCatalog.BasePrice[item];
                 retailTotal += unit * qty;
             }
