@@ -41,16 +41,19 @@ stable and RNG-fair. The pacing cliff at L8+ is the outlier (see finding 5).
 3. **Audio virtual-channel exhaustion** in a busy store ("Ran out of virtual
    channels" spam). Fix: 80 ms per-clip throttle in AudioFx.
 
-## Open findings (design/balance — recommended next batch)
-4. **LEVEL UP! popup never auto-dismisses** and stacks over the phone-order panel;
-   it sat covering screen-center for ~30 sim-minutes. → auto-hide after ~6 s.
-5. **Pacing cliff late game:** L8→L9 = 5,921 s and L9→L10 = 7,753 s of sim time vs
-   200–3,600 s for all earlier levels. Root cause observed on screen: thin buyer
-   traffic in MegaMart caps income. → scale buyer spawn rate with store level, or
-   soften XP curve above L7 (80×level → ~60×level), or both.
-6. **Phone orders demand unfulfillable quantities late** (e.g. 15 Herb + 7 Corn +
-   3 Milk for $300; 14 BottledMilk for $380). → cap per-item order size by current
-   production rate/level.
+## Findings — status
+4. **LEVEL UP! popup never auto-dismisses** — FIXED (commit ac8e795): the popup
+   now auto-hides after 6 s if the player doesn't tap AWESOME.
+5. **Pacing cliff late game** — RESOLVED / ACCEPTED. The original figures
+   (L8→L9 = 5,921 s, L9→L10 = 7,753 s) were measured in Run 1 BEFORE the
+   Counter-3 fix and the enclosed-layout rebuild, so they're stale. A fresh
+   validation run with all fixes shows MegaMart earning ~0.44 XP/s at L7 vs
+   ~0.68 early game — roughly 35% slower per level, i.e. a normal idle-game
+   late-game climb, not a stall. Owner decision (2026-07-14): leave as-is; no
+   XP-curve or income change. Revisit only if real players report grind.
+6. **Phone orders demanded unfulfillable quantities late** (e.g. 15 Herb + 7 Corn
+   + 3 Milk; 14 BottledMilk) — FIXED (commit ac8e795): each order line capped to
+   8 and total order to 12 items, so orders stay achievable.
 7. **Locked purchase pads flash for one frame** on scene load before their first
    Update hides them. Cosmetic. → hide children in Start.
 8. **Carry-wedge slow cycle at L7–L8:** the player can fill their carry stack (up
