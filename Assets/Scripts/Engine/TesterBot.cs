@@ -138,6 +138,25 @@ namespace MiniMart.Engine
                 return;
             }
 
+            // Priority 2b: with no level-unlock pad affordable right now, spend
+            // spare cash on the cheapest player upgrade (carry / speed / crop) —
+            // a real player does this, and it exercises the upgrade loop so we
+            // can confirm the pads actually help. Upgrades are finite (5 levels
+            // each), so this naturally stops once everything is maxed.
+            UpgradePad up = null;
+            foreach (var u in FindObjectsByType<UpgradePad>(FindObjectsSortMode.None))
+            {
+                int c = u.NextCost;
+                if (c < 0 || c > gm.Economy.PlayerCash) continue;
+                if (up == null || u.NextCost < up.NextCost) up = u;
+            }
+            if (up != null)
+            {
+                Note($"UPGRADING '{up.name}' (${up.NextCost})");
+                Hold(up.transform.position, 3f);
+                return;
+            }
+
             // Priority 3: at L6+ in Mart 1 with nothing left to buy here, take the
             // savings to MegaMart — that's where every remaining unlock lives.
             var travel = FindAnyObjectByType<SceneTransition>();

@@ -114,6 +114,15 @@ namespace MiniMart.Engine
                 if (cmr != null) cmr.material = font.material;
             }
             RefreshLabel();
+
+            // Hide every child until the first Update proves this pad is unlocked.
+            // Otherwise a level-locked pad renders for one frame before Update can
+            // hide it (visible flash on scene load). Unlocked pads reappear on the
+            // very next frame — imperceptible — while locked ones simply stay
+            // hidden. lockedHidden starts "true" so Update's change-check fires.
+            lockedHidden = true;
+            foreach (Transform child in transform)
+                child.gameObject.SetActive(false);
         }
 
         private void Update()

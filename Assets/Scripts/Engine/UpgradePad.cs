@@ -81,6 +81,10 @@ namespace MiniMart.Engine
             RefreshLabel();
         }
 
+        /// <summary>Cost of the next upgrade, or -1 when maxed. Public so the
+        /// automated tester can buy upgrades like a real player.</summary>
+        public int NextCost => GetNextCost();
+
         private int GetCurrentLevel()
         {
             var gm = GameManager.Instance;

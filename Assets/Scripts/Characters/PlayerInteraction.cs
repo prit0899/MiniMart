@@ -74,22 +74,29 @@ namespace MiniMart.Characters
 
             int room = player.CarryCapacity - player.CarryCount;
 
+            // Don't auto-harvest a crop we have nowhere to store: if storage is
+            // already full of it (counting what we're carrying), depositing just
+            // discards it into the bin and the carry stack wedges with useless
+            // goods. Stop harvesting X once storage + carried would overflow.
+            bool CanStore(ItemType item) =>
+                inv.CountOf(item) + CarriedCount(item) < inv.CapacityOf(item);
+
             // 1) Harvest whichever farm we're standing at (one unit per beat).
             if (room > 0)
             {
-                if (Near(henCoop, Radius) && henCoop.TotalEggsReady() > 0)
+                if (Near(henCoop, Radius) && henCoop.TotalEggsReady() > 0 && CanStore(ItemType.Egg))
                 { Pick(ItemType.Egg, henCoop.Collect(1)); return; }
-                if (Near(tomatoFarm, Radius) && tomatoFarm.TotalRipe() > 0)
+                if (Near(tomatoFarm, Radius) && tomatoFarm.TotalRipe() > 0 && CanStore(ItemType.Tomato))
                 { Pick(ItemType.Tomato, tomatoFarm.Harvest(1)); return; }
-                if (Near(wheatFarm, Radius) && wheatFarm.ReadyCount() > 0)
+                if (Near(wheatFarm, Radius) && wheatFarm.ReadyCount() > 0 && CanStore(ItemType.Wheat))
                 { Pick(ItemType.Wheat, wheatFarm.Harvest(1)); return; }
-                if (Near(cowPen, Radius) && cowPen.TotalMilkReady() > 0)
+                if (Near(cowPen, Radius) && cowPen.TotalMilkReady() > 0 && CanStore(ItemType.Milk))
                 { Pick(ItemType.Milk, cowPen.Collect(1)); return; }
-                if (Near(herbPatch, Radius) && herbPatch.TotalRipe() > 0)
+                if (Near(herbPatch, Radius) && herbPatch.TotalRipe() > 0 && CanStore(ItemType.Herb))
                 { Pick(ItemType.Herb, herbPatch.Harvest(1)); return; }
-                if (Near(cornField, Radius) && cornField.TotalRipe() > 0)
+                if (Near(cornField, Radius) && cornField.TotalRipe() > 0 && CanStore(ItemType.Corn))
                 { Pick(ItemType.Corn, cornField.Harvest(1)); return; }
-                if (Near(appleOrchard, Radius) && appleOrchard.TotalRipe() > 0)
+                if (Near(appleOrchard, Radius) && appleOrchard.TotalRipe() > 0 && CanStore(ItemType.Apple))
                 { Pick(ItemType.Apple, appleOrchard.Harvest(1)); return; }
             }
 

@@ -20,13 +20,17 @@ namespace MiniMart.Catalog
             return curve;
         }
 
-        // ---- Player: reference-flow carry scale (starts ~15, upgrades toward 44+),
-        //      speed rises every level, always fastest. ----
+        // ---- Player: reference-flow carry scale. STARTS SMALL (5) so the carry
+        //      upgrade is a real, felt loop — the reference game's core hook.
+        //      Owner feedback (2026-07-14): a base carry of 15 meant you could
+        //      max the whole game without ever upgrading, making the Carry/Speed
+        //      pads pointless. Now you FEEL the limit and each upgrade relieves
+        //      it (5 → 44 carry). Speed still rises every level and the player
+        //      stays the fastest character (base 4.6 × 1.20 = 5.52 u/s already
+        //      beats every NPC's absolute max of 3.0 × 1.6 = 4.8 u/s). ----
         public static UpgradeCurve PlayerCurve() => Build(
-            new[] { 15, 22, 29, 36, 44 },                     // reference video: CARRY 15 -> 44+
-            // Batch 36 retune: with baseSpeed 3.0 this yields 4.2 → 6.3 u/s
-            // across levels, so the Speed upgrade FEELS like an upgrade.
-            new[] { 1.40f, 1.55f, 1.70f, 1.90f, 2.10f },      // always above every NPC curve below
+            new[] { 5, 12, 20, 31, 44 },                      // CARRY 5 -> 44 (was 15 -> 44)
+            new[] { 1.20f, 1.45f, 1.70f, 1.90f, 2.15f },      // always above every NPC curve below
             new[] { 0, 50, 100, 200, 500 });
 
         // ---- Shelver 1 & 2: stack 3 -> 5 over 5 levels, speed rises every upgrade. ----
