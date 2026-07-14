@@ -1,0 +1,123 @@
+# Memory — live project state
+
+> **READ THIS FIRST.** This is the handoff file: where we are, what's done, what's
+> broken, and every piece of feedback the owner gave from playing the game himself.
+> **Update it at the end of every work session.**
+>
+> Companion docs: [PRD](PRD.md) · [Architecture](Architecture.md) · [Rules](Rules.md) · [Phases](Phases.md) · [Design](Design.md)
+
+**Last updated:** 2026-07-14
+**Branch:** `feature/reference-flow-overhaul`
+**Latest commit:** `3096a44` — *fix: player couldn't carry/stock — revert over-aggressive harvest guard*
+
+---
+
+## 1. Where we are right now
+
+The game is **playable end-to-end, L1 → L10**, across both marts.
+
+- ✅ Both marts match the owner's hand-drawn map (one enclosed building each).
+- ✅ Nobody walks through walls.
+- ✅ Upgrades are meaningful (base carry 8, upgrading to 44).
+- ✅ `DataValidator` green: **44,891 assertions pass, 0 fail**.
+- ✅ 0 compile errors.
+- 🟡 Last automated playthrough reached **L9 of 10** before the session ended
+  (not a failure — the session was torn down; earlier runs did reach L10).
+
+### Currently being worked on
+Nothing mid-flight. The last change (`3096a44`) is committed, pushed, and verified.
+
+**Next most valuable work** (in order):
+1. Finish the L1→L10 verification run on the current build and note differences.
+2. Phase 6 onboarding: first-session spotlight path (dim world → highlight tomato
+   farm → shelf → counter). This is the top open item from real reviewer feedback.
+3. Device (real iPhone) test pass — never done yet.
+
+---
+
+## 2. Owner feedback & bugs found by *playing* (chronological)
+
+> This is the highest-value section. These are real problems found by a human or
+> by honest automated play — not code review. **The pattern: as developers we
+> could not see these; only playing revealed them.**
+
+| # | Owner said / QA found | Root cause | Status |
+|---|---|---|---|
+| 1 | *"lots of confusion, can't understand where to start"* (real human reviewers) | No onboarding at all | 🟡 Partly fixed: TutorialGuide, UnlockGuide arrow + toast, per-station hints. Spotlight path still open. |
+| 2 | *"one level upgrade gives 5-6 things unlock but actual need is 1-3"* | Ladder too dense | ✅ Fixed — 1–3 unlocks per level. |
+| 3 | *"split mall in 2 parts… make new game scene like reference"* | Single map | ✅ Fixed — MegaMart is a separate scene + travel pad. |
+| 4 | **MegaMart had no working checkout L6–L8** | Counter 3 was a $400 pad gated at L9, but it was the scene's *only* till — buyers could never pay, income and XP froze on arrival | ✅ Fixed — Counter 3 ships open with MegaMart. |
+| 5 | **Harvested milk had nowhere to go** | MegaMart's shelf list still held retired CannedTomato/Cookie shelves; no Milk shelf | ✅ Fixed. |
+| 6 | Audio *"ran out of virtual channels"* spam | Unthrottled one-shots in a busy store | ✅ Fixed — 80 ms per-clip throttle. |
+| 7 | *"farms too far and out of the mall, blender, wheat flour meal etc also same"* | Shop floor was walled, but farms (z=10) and machines (z=32-36) sat on **open grass 20–30 units outside**, one even beyond the east wall | ✅ Fixed — both marts rebuilt as one enclosed building. |
+| 8 | *"make sure no one can teleport from the border/wall"* | Pathfind fallback walked straight through geometry | ✅ Fixed — every movement step is grid-checked with axis-slide. |
+| 9 | Level-up popup never went away | No auto-dismiss; sat on screen ~30 min in a QA run | ✅ Fixed — auto-hides after 6 s. |
+| 10 | Phone orders demanded *14× BottledMilk*, *15 Herb + 7 Corn + 3 Milk* | Order size scaled to full storage cap (~20) | ✅ Fixed — 8 per line, 12 per order. |
+| 11 | *"game don't enforce upgrades… you reached max level without upgrade… main character has no limit on stack and speed, so why someone upgrade it"* | **Base carry was 15** — enough to finish the entire game without ever upgrading, making the upgrade pads decoration | ✅ Fixed — base carry 8 → 44 via upgrades. TesterBot now buys upgrades too, so QA runs exercise the loop. |
+| 12 | **"main player can not carry any items"** | **Self-inflicted.** A "carry-wedge" guard I added blocked harvesting whenever an item's *storage* was full — but the player also harvests to **stock shelves**. Once the farmer filled storage and no shelver was hired, the player refused to harvest → shelves never stocked → no sales → hard stall at L1. Also the carry curve had been left at max 10, which fails the validator's `MaxCarry >= 44` (and freezes the game if "Error Pause" is on). | ✅ Fixed (`3096a44`) — guard reverted, curve set to `{8,16,25,34,44}`. Verified: 0 stalls through L1–L3. |
+| 13 | *"Unity Hub can't quit, even force quit reopens"* | **My fault** — a background keep-alive loop was relaunching the editor every 25 s | ✅ Fixed & killed. **Lesson: always clean up background processes.** |
+| 14 | *"stacks for shelver, farmer, buyer should show same as main player"* | NPCs drew flat tinted cubes | ✅ Fixed — all NPCs render real item meshes. |
+
+### Balance decision on record
+**Late-game pacing:** the alarming original numbers (L8→L9 = 5,921 s) were measured
+*before* the counter and layout fixes and are **stale**. Fresh data shows MegaMart
+runs ~35% slower per level than early game — normal idle-game pacing.
+**Owner decided (2026-07-14): leave as-is.** Do not "fix" this without asking.
+
+---
+
+## 3. Hard-won lessons (don't repeat these)
+
+1. **Playing beats reasoning.** Every serious bug above was found by *playing*,
+   not by reading code. Use the TesterBot.
+2. **Don't add clever guards to the core loop.** The carry-wedge guard (#12) was a
+   fix for a cosmetic non-problem and broke the entire game.
+3. **A red `DataValidator` can freeze the game** (LogError + "Error Pause").
+   Always leave it green.
+4. **The scene is built from code.** Editing the scene in Unity does nothing.
+5. **Visual walls and grid walls are two things** and must agree.
+6. **Stale `Editor.log` lines lie** — the validator only re-runs on Play.
+7. **Clean up your background processes.**
+
+---
+
+## 4. Environment notes
+
+- **Unity MCP is unavailable** ("your Unity plan doesn't include MCP connections").
+  Don't depend on it. The marker-file TesterBot harness replaces it entirely.
+- The **Genies SDK Bootstrap Wizard** steals editor focus after every recompile and
+  idles the editor's update loop (freezing unattended runs). Its
+  "Show wizard on startup" / "Check prerequisites on load" are now **off** — keep
+  them off.
+- `Assets/Genies/` is **gitignored** — it holds an auth artifact. Never commit it.
+- If the package cache gets wiped, compiles fail with thousands of phantom errors.
+  Fix: quit Unity, delete `Library/{PackageCache,PackageManager,Bee,ScriptAssemblies}`,
+  relaunch.
+
+---
+
+## 5. How to run the game / QA it
+
+```bash
+# Automated playthrough (no MCP, no editor scripting needed)
+touch Logs/testerbot.enabled     # spawn the bot on Play
+touch Logs/testerbot.freshrun    # wipe the save once (optional)
+# → press Play in Unity
+tail -f Logs/testerbot_run.txt   # live diary: STATUS line + events
+
+# When done
+rm -f Logs/testerbot.enabled Logs/testerbot.freshrun
+```
+
+The bot plays with player-legal inputs only — it never cheats. It buys purchase
+pads *and* upgrades, so a run exercises the real economy.
+
+---
+
+## 6. Update protocol
+
+At the end of a work session, update:
+- **§1** — what you did, what's next.
+- **§2** — any new bug/feedback, with **root cause**, not just the symptom.
+- **§3** — anything you learned the hard way.
+- The **commit hash** and date at the top.
