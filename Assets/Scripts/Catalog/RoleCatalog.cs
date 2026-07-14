@@ -20,22 +20,24 @@ namespace MiniMart.Catalog
             return curve;
         }
 
-        // ---- Player: reference-flow carry scale. STARTS SMALL (5) so the carry
-        //      upgrade is a real, felt loop — the reference game's core hook.
-        //      Owner feedback (2026-07-14): a base carry of 15 meant you could
-        //      max the whole game without ever upgrading, making the Carry/Speed
-        //      pads pointless. Now you FEEL the limit and each upgrade relieves
-        //      it (5 → 44 carry). Speed still rises every level and the player
-        //      stays the fastest character (base 4.6 × 1.20 = 5.52 u/s already
-        //      beats every NPC's absolute max of 3.0 × 1.6 = 4.8 u/s). ----
+        // ---- Player: reference-flow carry scale. Starts limited but USABLE (8)
+        //      so the carry upgrade is a real, felt loop — the reference game's
+        //      core hook — while the top reaches 44 (reference "44+", and the
+        //      DataValidator requires MaxCarry >= 44). Owner feedback
+        //      (2026-07-14): base 15 let you max the game without upgrading
+        //      (pads pointless); a too-small base of 5 read as "can't carry
+        //      anything". 8 → 44 keeps the limit felt AND playable, with a big
+        //      5.5× payoff by the top. Speed still rises every level and the
+        //      player stays the fastest character (base 4.6 × 1.20 = 5.52 u/s
+        //      already beats every NPC's absolute max of 3.0 × 1.6 = 4.8 u/s). ----
         public static UpgradeCurve PlayerCurve() => Build(
-            new[] { 5, 12, 20, 31, 44 },                      // CARRY 5 -> 44 (was 15 -> 44)
+            new[] { 8, 16, 25, 34, 44 },                      // CARRY 8 -> 44
             new[] { 1.20f, 1.45f, 1.70f, 1.90f, 2.15f },      // always above every NPC curve below
-            new[] { 0, 50, 100, 200, 500 });
+            new[] { 0, 50, 150, 300, 600});
 
         // ---- Shelver 1 & 2: stack 3 -> 5 over 5 levels, speed rises every upgrade. ----
         public static UpgradeCurve Shelver1Curve() => Build(
-            new[] { 3, 3, 4, 4, 5 },
+            new[] { 3, 4, 5, 6, 7},
             new[] { 1.0f, 1.15f, 1.3f, 1.45f, 1.6f },
             new[] { 0, 50, 100, 200, 500 });
 
@@ -43,13 +45,13 @@ namespace MiniMart.Catalog
 
         // ---- Chef: the premium worker. Cost ladder must top out >= shelvers (GDD 6.2). ----
         public static UpgradeCurve ChefCurve() => Build(
-            new[] { 3, 4, 4, 5, 6 },
+            new[] { 3, 4, 5, 6, 7 },
             new[] { 1.0f, 1.15f, 1.3f, 1.45f, 1.6f },
             new[] { 0, 200, 500, 1000, 2000 });
 
         // ---- Farmer: manages hens, wheat, tomato — chef stats, mid-tier cost. ----
         public static UpgradeCurve FarmerCurve() => Build(
-            new[] { 3, 4, 4, 5, 6 },
+            new[] { 3, 4, 5, 6, 7 },
             new[] { 1.0f, 1.15f, 1.3f, 1.45f, 1.6f },
             new[] { 0, 100, 200, 500, 1000 });
 
