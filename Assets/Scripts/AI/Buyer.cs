@@ -199,9 +199,19 @@ namespace MiniMart.AI
                 return;
             }
 
-            // Standing at a shelf, taking items one per beat.
+            // Standing at a shelf, taking items ONE PER BEAT. Several buyers can pick
+            // from the same shelf at once and simply interleave, so stock is shared
+            // naturally — first-come takes one, next takes one, and whoever is still
+            // there when it runs dry leaves with a partial basket and pays for that.
             if (pickingShelf != null)
             {
+                // Drifted out of arm's reach (pushed by the crowd)? Step back in.
+                if (!WithinReach(pickingShelf))
+                {
+                    SetTarget(pickingShelf.transform.position);
+                    return;
+                }
+
                 pickBeat += dt;
                 if (pickBeat < 0.25f) return;
                 pickBeat = 0f;
@@ -228,20 +238,41 @@ namespace MiniMart.AI
 
             if (!headingToCounter)
             {
-                // Find the next item we still want.
+                // Shop for ANYTHING on our list that is actually in stock — nearest first.
+                //
+                // The old code took basket entry #1 and, if that shelf was empty, parked
+                // the buyer there waiting for a restock (or made it give up). It never
+                // looked at the rest of the basket. So a buyer blocked on out-of-stock
+                // bread would completely ignore a FULL tomato shelf beside it — which is
+                // why crowds of shoppers stood around a maxed shelf without taking a
+                // single item.
+                ShopShelf shelf = FindBestStockedShelf();
+                if (shelf != null)
+                {
+                    shopWait = 0f;
+                    // Already close enough? Start picking immediately. Requiring a pinpoint
+                    // arrival meant a jostling crowd could keep everyone just outside the
+                    // arrival radius, so nobody ever started picking.
+                    if (WithinReach(shelf))
+                    {
+                        pickingShelf = shelf;
+                        currentTarget = null;
+                        pickBeat = 0f;
+                    }
+                    else
+                    {
+                        currentTarget = shelf;
+                        SetTarget(shelf.transform.position);
+                    }
+                    return;
+                }
+
+                // Nothing we still want is in stock ANYWHERE.
                 ItemType needed = FindNextNeededItem();
                 bool stillWants = Basket.TryGetValue(needed, out int needCount) && needCount > 0;
 
                 if (stillWants)
                 {
-                    ShopShelf shelf = FindShelfFor(needed); // a shelf that currently has stock
-                    if (shelf != null)
-                    {
-                        shopWait = 0f;
-                        currentTarget = shelf;
-                        SetTarget(shelf.transform.position);
-                        return;
-                    }
 
                     // The item's shelf exists but is empty.
                     if (HasActiveShelf(needed))
@@ -352,6 +383,36 @@ namespace MiniMart.AI
             foreach (var s in allShelves)
                 if (s != null && s.gameObject.activeInHierarchy && s.Item == item) return s;
             return null;
+        }
+
+        /// <summary>Arm's reach of a shelf. Generous on purpose: a crowd of shoppers
+        /// must not be able to block each other out of picking.</summary>
+        private const float ShelfReach = 2.0f;
+
+        private bool WithinReach(ShopShelf s)
+        {
+            if (s == null) return false;
+            Vector3 a = transform.position; a.y = 0f;
+            Vector3 b = s.transform.position; b.y = 0f;
+            return (a - b).sqrMagnitude <= ShelfReach * ShelfReach;
+        }
+
+        /// <summary>The nearest shelf holding ANY item we still want. This is what stops
+        /// a buyer stalling on one out-of-stock line while other wanted goods sit on a
+        /// full shelf next to it.</summary>
+        private ShopShelf FindBestStockedShelf()
+        {
+            ShopShelf best = null;
+            float bestD = float.MaxValue;
+            foreach (var kv in Basket)
+            {
+                if (kv.Value <= 0) continue;
+                var s = FindShelfFor(kv.Key);          // active + Count > 0
+                if (s == null) continue;
+                float d = (s.transform.position - transform.position).sqrMagnitude;
+                if (d < bestD) { bestD = d; best = s; }
+            }
+            return best;
         }
 
         private ShopShelf FindShelfFor(ItemType item)

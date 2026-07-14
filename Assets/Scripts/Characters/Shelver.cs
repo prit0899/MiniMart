@@ -41,13 +41,23 @@ namespace MiniMart.Characters
 
             if (hasTarget || AssignedShelves == null || AssignedShelves.Length == 0 || inventory == null) return;
 
+            // Pick the emptiest shelf WE CAN ACTUALLY REFILL RIGHT NOW.
+            //
+            // The old code chose the emptiest shelf outright and then bailed out if that
+            // one item happened to have no stock in storage — so the shelver stood idle
+            // while other shelves it was responsible for sat empty with plenty of stock
+            // waiting on the rack. Same greedy trap the buyers had.
             ShopShelf needsRestock = null;
-            int worstDeficit = -1;
+            int worstDeficit = 0;
             foreach (var shelf in AssignedShelves)
             {
                 if (shelf == null || !shelf.gameObject.activeInHierarchy) continue; // not purchased yet
                 if (!IsResponsibleFor(shelf.Item)) continue;
+
                 int deficit = shelf.Capacity - shelf.Count;
+                if (deficit <= 0) continue;                        // already full
+                if (inventory.CountOf(shelf.Item) <= 0) continue;  // nothing to refill it with
+
                 if (deficit > worstDeficit)
                 {
                     worstDeficit = deficit;
@@ -55,7 +65,7 @@ namespace MiniMart.Characters
                 }
             }
 
-            if (needsRestock != null && worstDeficit > 0 && inventory.CountOf(needsRestock.Item) > 0)
+            if (needsRestock != null)
             {
                 // Two-leg trip: walk to the item's storage rack first, pick up there,
                 // THEN carry to the shelf. (Previously the shelver withdrew from thin
