@@ -17,6 +17,21 @@ namespace MiniMart.Production
         private UpgradeCurve curve;
         private UpgradeStep step;
 
+        // ── Split-capacity model (owner spec, Mart 1) ────────────────────────
+        // When SplitCapacity is on, the machine has INDEPENDENT input and output
+        // buffers, each starting at 4 and upgraded to 6 then 8 on its own track.
+        // When off (MegaMart, untouched), input == output == the old curve's
+        // stackCapacity, so behaviour is exactly as before.
+        public bool SplitCapacity;
+        public int InputCapLevel = 1;    // "Speed" track  (feed buffer)
+        public int OutputCapLevel = 1;   // "Stack" track  (product buffer)
+        public int[] InputUpgradeCosts;  // cost 1->2, 2->3  (set by bootstrapper)
+        public int[] OutputUpgradeCosts;
+
+        // Optional SECOND input (only the Oven: Bread = Egg + Wheat Flour).
+        public Core.ItemType? InputItem2;
+        public int InputQueued2;
+
         private void InitializeIfNeeded()
         {
             if (curve != null) return;
@@ -67,19 +82,66 @@ namespace MiniMart.Production
             return true;
         }
 
-        public int StackCapacity
+        /// <summary>Input-buffer capacity. In split mode this is the "Speed" (feed) track.</summary>
+        public int InputCapacity
         {
             get
             {
                 InitializeIfNeeded();
-                return step.stackCapacity;
+                return SplitCapacity ? StationCatalog.Cap(InputCapLevel) : step.stackCapacity;
             }
         }
 
-        /// <summary>Adds raw ingredient to the input queue, capped at the machine's stack capacity.</summary>
+        /// <summary>Output-tray capacity. In split mode this is the "Stack" (product) track.</summary>
+        public int OutputCapacity
+        {
+            get
+            {
+                InitializeIfNeeded();
+                return SplitCapacity ? StationCatalog.Cap(OutputCapLevel) : step.stackCapacity;
+            }
+        }
+
+        /// <summary>Back-compat alias: existing load-guards ("InputQueued &lt; StackCapacity")
+        /// still mean the INPUT buffer. Output clamping now uses OutputCapacity.</summary>
+        public int StackCapacity => InputCapacity;
+
+        /// <summary>Adds raw ingredient to the (first) input queue, capped at input capacity.</summary>
         public void LoadInput(int amount)
         {
-            InputQueued = Mathf.Min(StackCapacity, InputQueued + amount);
+            InputQueued = Mathf.Min(InputCapacity, InputQueued + amount);
+        }
+
+        /// <summary>Adds the SECOND ingredient (Oven only), capped at input capacity.</summary>
+        public void LoadInput2(int amount)
+        {
+            InputQueued2 = Mathf.Min(InputCapacity, InputQueued2 + amount);
+        }
+
+        // ── Two upgrade tracks (matches the character/UpgradeRow API) ─────────
+        //   Stack track = OUTPUT buffer,  Speed track = INPUT buffer.
+        public int StackLevel => OutputCapLevel;
+        public int SpeedLevel => InputCapLevel;
+
+        public int NextStackCost => (!SplitCapacity || OutputUpgradeCosts == null
+            || OutputCapLevel - 1 >= OutputUpgradeCosts.Length) ? -1 : OutputUpgradeCosts[OutputCapLevel - 1];
+        public int NextSpeedCost => (!SplitCapacity || InputUpgradeCosts == null
+            || InputCapLevel - 1 >= InputUpgradeCosts.Length) ? -1 : InputUpgradeCosts[InputCapLevel - 1];
+
+        public bool TryUpgradeStack(out int cost)
+        {
+            cost = NextStackCost;
+            if (cost < 0) return false;
+            OutputCapLevel = Mathf.Min(StationCatalog.MaxLevel, OutputCapLevel + 1);
+            return true;
+        }
+
+        public bool TryUpgradeSpeed(out int cost)
+        {
+            cost = NextSpeedCost;
+            if (cost < 0) return false;
+            InputCapLevel = Mathf.Min(StationCatalog.MaxLevel, InputCapLevel + 1);
+            return true;
         }
 
         private ParticleSystem steam;
@@ -133,16 +195,19 @@ namespace MiniMart.Production
             InitializeIfNeeded();
             EnsureSteam();
 
-            bool processing = (IsAutoProducer || InputQueued > 0) && OutputReady < StackCapacity;
+            // A two-input machine (Oven) needs BOTH ingredients queued.
+            bool hasInputs = IsAutoProducer
+                || (InputItem2.HasValue ? (InputQueued > 0 && InputQueued2 > 0) : InputQueued > 0);
+
+            bool processing = hasInputs && OutputReady < OutputCapacity;
             if (processing && !steam.isPlaying) steam.Play();
             else if (!processing && steam.isPlaying) steam.Stop();
 
-            // Non-auto machines need input; auto machines just need output tray space.
-            if (!IsAutoProducer && InputQueued <= 0) return;
+            if (!hasInputs) return;
 
-            // Output tray full: stall processing instead of consuming input and silently
-            // DESTROYING the product (OutputReady was clamped, losing one item per cycle).
-            if (OutputReady >= StackCapacity) return;
+            // Output tray full: stall instead of consuming input and silently
+            // DESTROYING the product.
+            if (OutputReady >= OutputCapacity) return;
 
             float baseSeconds = ProductionCatalog.BaseProcessSeconds[Type];
             float secondsPerUnit = baseSeconds / step.speedMultiplier;
@@ -151,8 +216,12 @@ namespace MiniMart.Production
             if (processTimer >= secondsPerUnit)
             {
                 processTimer = 0f;
-                if (!IsAutoProducer) InputQueued -= 1;
-                OutputReady = Mathf.Min(StackCapacity, OutputReady + 1);
+                if (!IsAutoProducer)
+                {
+                    InputQueued -= 1;
+                    if (InputItem2.HasValue) InputQueued2 -= 1;
+                }
+                OutputReady = Mathf.Min(OutputCapacity, OutputReady + 1);
             }
         }
 

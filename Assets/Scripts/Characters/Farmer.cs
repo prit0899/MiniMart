@@ -105,7 +105,9 @@ namespace MiniMart.Characters
             for (int i = 0; i < 5; i++)
             {
                 int pick = (farmCursor + i) % 5;
-                if (pick == 0 && FarmActive(henCoop) && henCoop.TotalEggsReady() > 0 && HasStorageRoom(ItemType.Egg))
+                if (pick == 0 && FarmActive(henCoop) &&
+                    ((henCoop.TotalEggsReady() > 0 && HasStorageRoom(ItemType.Egg)) ||
+                     (henCoop.TomatoRoom > 0 && tomatoCount > 0)))
                 {
                     farmCursor = 1;
                     fState = FarmerState.GoingToHenCoop;
@@ -173,6 +175,13 @@ namespace MiniMart.Characters
                 case FarmerState.GoingToHenCoop:
                     if (henCoop != null)
                     {
+                        // Feed the hen the tomatoes we're carrying, then take its eggs.
+                        if (tomatoCount > 0 && henCoop.TomatoRoom > 0)
+                        {
+                            int fed = henCoop.LoadTomato(Mathf.Min(tomatoCount, henCoop.TomatoRoom));
+                            tomatoCount -= fed;
+                            CarryCount = Mathf.Max(0, CarryCount - fed);
+                        }
                         int eggs = henCoop.Collect(room);
                         if (eggs > 0) TryPickUpItem(eggs, ItemType.Egg);
                     }

@@ -1,3 +1,4 @@
+using UnityEngine;
 using System.Collections.Generic;
 using MiniMart.Core;
 
@@ -37,6 +38,29 @@ namespace MiniMart.Catalog
     }
 
     /// <summary>
+    /// <summary>Processing-station capacity ladder (owner spec): every Mart-1 station
+    /// starts at 4 and upgrades to 6 then 8, on TWO independent tracks (input buffer
+    /// and output buffer). Index by (level-1).</summary>
+    public static class StationCatalog
+    {
+        public static readonly int[] Caps = { 4, 6, 8 };   // level 1,2,3
+        public const int MaxLevel = 3;
+
+        // Upgrade cost to go level 1->2 and 2->3, per track. Owner-set; tunable.
+        public static readonly int[] MillInput    = { 150, 300 };   // wheat buffer
+        public static readonly int[] MillOutput   = { 180, 400 };   // flour buffer
+        public static readonly int[] BlenderInput = { 150, 300 };   // tomato buffer
+        public static readonly int[] BlenderOutput= { 180, 400 };   // ketchup buffer
+        public static readonly int[] StoveInput   = { 150, 300 };   // egg buffer
+        public static readonly int[] StoveOutput  = { 180, 400 };   // fried-egg buffer
+        public static readonly int[] OvenInput    = { 150, 300 };   // egg+flour buffer
+        public static readonly int[] OvenOutput   = { 180, 400 };   // bread buffer
+        public static readonly int[] HenInput     = { 310, 700 };   // tomato buffer  ("speed")
+        public static readonly int[] HenOutput    = { 250, 600 };   // egg buffer     ("stack")
+
+        public static int Cap(int level) => Caps[Mathf.Clamp(level, 1, MaxLevel) - 1];
+    }
+
     /// Tomato farm: 2 columns x 3 rows = 6 plants, each holding up to 3 tomatoes,
     /// growing 1 tomato every 0.5s. Eggs reuse the identical per-slot growth cycle.
     /// Wheat farm: 3x4 grid, each box holds exactly 1 wheat (binary grown/not-grown).
@@ -48,7 +72,7 @@ namespace MiniMart.Catalog
         public const int TomatoRows = 3;
         public const int TomatoPlantCount = TomatoCols * TomatoRows; // 6
         public const int TomatoMaxPerPlant = 3;
-        public const float TomatoGrowSecondsPerUnit = 0.5f;
+        public const float TomatoGrowSecondsPerUnit = 0.4f;   // owner spec: regrow 1 every 0.3-0.5s
 
         // Eggs: same per-slot cadence as tomato, but slot count is tied to hen count (2 hens),
         // each hen acting as one growth "plant" with the same max-per-slot/grow-rate shape.
@@ -66,7 +90,7 @@ namespace MiniMart.Catalog
         public const int WheatRows = 4;
         public const int WheatBoxCount = WheatCols * WheatRows; // 12
         public const int WheatMaxPerBox = 1;
-        public const float WheatGrowSecondsPerUnit = 1.0f; // tunable; one wheat per box per cycle
+        public const float WheatGrowSecondsPerUnit = 0.4f;    // owner spec: regrow 1 every 0.3-0.5s
 
         // Herb patch: 4 bushes, up to 3 leaves each, slower regrowth (mid-game specialty crop).
         public const int HerbBushCount = 4;

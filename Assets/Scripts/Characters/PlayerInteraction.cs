@@ -84,6 +84,9 @@ namespace MiniMart.Characters
             //    already handled by the bin, so plain carry-room gating is safe.)
             if (room > 0)
             {
+                // Hen now EATS tomatoes and lays eggs: feed a carried tomato, or collect a laid egg.
+                if (Near(henCoop, Radius) && CarriedCount(ItemType.Tomato) > 0 && henCoop.TomatoRoom > 0)
+                { henCoop.LoadTomato(1); Consume(ItemType.Tomato, 1); return; }
                 if (Near(henCoop, Radius) && henCoop.TotalEggsReady() > 0)
                 { Pick(ItemType.Egg, henCoop.Collect(1)); return; }
                 if (Near(tomatoFarm, Radius) && tomatoFarm.TotalRipe() > 0)
@@ -174,9 +177,11 @@ namespace MiniMart.Characters
             }
             if (Near(oven, Radius))
             {
-                // Oven takes Dough -> Bread
-                if (CarriedCount(ItemType.Dough) > 0 && oven.InputQueued < oven.StackCapacity)
-                { MoveToMachine(oven, ItemType.Dough, 1); return; }
+                // Oven takes Wheat Flour + Egg -> Bread (flour → input 1, egg → input 2).
+                if (CarriedCount(ItemType.WheatFlour) > 0 && oven.InputQueued < oven.InputCapacity)
+                { oven.LoadInput(1); Consume(ItemType.WheatFlour, 1); return; }
+                if (CarriedCount(ItemType.Egg) > 0 && oven.InputQueued2 < oven.InputCapacity)
+                { oven.LoadInput2(1); Consume(ItemType.Egg, 1); return; }
                 if (oven.OutputReady > 0 && room > 0)
                 { Pick(ItemType.Bread, oven.CollectFinished()); return; }
             }

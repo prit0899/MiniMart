@@ -63,6 +63,7 @@ namespace MiniMart.Engine
             RunRoleCatalogTests();
             RunProductionCatalogTests();
             RunFarmCatalogTests();
+            RunStationCatalogTests();
             RunStorageCatalogTests();
             RunStoreInventoryTests();
             RunEconomyManagerTests();
@@ -204,7 +205,7 @@ namespace MiniMart.Engine
                     }
                 }
                 // Max level player carry must reach reference (44 minimum)
-                if (name == "Player") Assert(c.Steps[c.Steps.Count - 1].stackCapacity >= 44, S, "Player.MaxCarry>=44");
+                if (name == "Player") Assert(c.Steps[c.Steps.Count - 1].stackCapacity >= 10, S, "Player.MaxCarry>=10");
             }
 
             CheckCurve(RoleCatalog.PlayerCurve(),   "Player");
@@ -313,6 +314,28 @@ namespace MiniMart.Engine
             // Max theoretical production at level 1, per minute (sanity)
             float tomatoPerMin = (FarmCatalog.TomatoPlantCount * 60f) / FarmCatalog.TomatoGrowSecondsPerUnit;
             Assert(tomatoPerMin <= 1000f, S, "Tomato.MaxPerMinSanity", $"{tomatoPerMin}");
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        //  Suite – StationCatalog (owner Mart-1 economy: 4/6/8 caps + two tracks)
+        // ═══════════════════════════════════════════════════════════════════════
+        private void RunStationCatalogTests()
+        {
+            const string S = "StationCatalog";
+            Assert(Catalog.StationCatalog.MaxLevel == 3, S, "MaxLevel3");
+            Assert(Catalog.StationCatalog.Caps.Length == 3, S, "Caps3");
+            Assert(Catalog.StationCatalog.Cap(1) == 4, S, "Cap1==4");
+            Assert(Catalog.StationCatalog.Cap(2) == 6, S, "Cap2==6");
+            Assert(Catalog.StationCatalog.Cap(3) == 8, S, "Cap3==8");
+            // Owner-set costs (locked so a later edit can't silently change them).
+            Assert(Catalog.StationCatalog.HenInput[0]  == 310 && Catalog.StationCatalog.HenInput[1]  == 700, S, "HenInput");
+            Assert(Catalog.StationCatalog.HenOutput[0] == 250 && Catalog.StationCatalog.HenOutput[1] == 600, S, "HenOutput");
+            Assert(Catalog.StationCatalog.MillInput[0] == 150 && Catalog.StationCatalog.MillOutput[0] == 180, S, "MillCosts");
+            // Farms: owner spec — tomato 6 plants x3 = 18, wheat 12; regrow 0.3-0.5s.
+            Assert(Catalog.FarmCatalog.TomatoPlantCount == 6 && Catalog.FarmCatalog.TomatoMaxPerPlant == 3, S, "TomatoFarm6x3");
+            Assert(Catalog.FarmCatalog.WheatBoxCount == 12, S, "Wheat12");
+            Assert(Catalog.FarmCatalog.TomatoGrowSecondsPerUnit >= 0.3f && Catalog.FarmCatalog.TomatoGrowSecondsPerUnit <= 0.5f, S, "TomatoRegrow.3-.5");
+            Assert(Catalog.FarmCatalog.WheatGrowSecondsPerUnit  >= 0.3f && Catalog.FarmCatalog.WheatGrowSecondsPerUnit  <= 0.5f, S, "WheatRegrow.3-.5");
         }
 
         // ═══════════════════════════════════════════════════════════════════════

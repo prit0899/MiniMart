@@ -52,14 +52,19 @@ namespace MiniMart.UI
             }
             else if (TargetMachine != null)
             {
-                // Machine currently has one Level driving both stack and speed —
-                // both tracks read from the same Level for now (the split is
-                // on the character side; machine parity is a follow-up).
-                Set(TargetMachine.Level, 4, TargetMachine.NextUpgradeCost);
+                if (!TargetMachine.SplitCapacity)                    // MegaMart: single track
+                    Set(TargetMachine.Level, 4, TargetMachine.NextUpgradeCost);
+                else if (WhichTrack == Track.Stack)                 // Mart 1: output buffer
+                    Set(TargetMachine.StackLevel, MiniMart.Catalog.StationCatalog.MaxLevel, TargetMachine.NextStackCost);
+                else                                                // Mart 1: input buffer
+                    Set(TargetMachine.SpeedLevel, MiniMart.Catalog.StationCatalog.MaxLevel, TargetMachine.NextSpeedCost);
             }
             else if (TargetHenCoop != null)
             {
-                Set(TargetHenCoop.Level, 4, TargetHenCoop.NextUpgradeCost);
+                if (WhichTrack == Track.Stack)                      // egg tray
+                    Set(TargetHenCoop.StackLevel, MiniMart.Catalog.StationCatalog.MaxLevel, TargetHenCoop.NextStackCost);
+                else                                                // tomato buffer
+                    Set(TargetHenCoop.SpeedLevel, MiniMart.Catalog.StationCatalog.MaxLevel, TargetHenCoop.NextSpeedCost);
             }
             else if (TargetCowPen != null)
             {
@@ -99,15 +104,26 @@ namespace MiniMart.UI
             }
             else if (TargetMachine != null)
             {
-                int cost = TargetMachine.NextUpgradeCost;
-                if (cost < 0 || !eco.TrySpend(cost)) return;
-                TargetMachine.TryUpgrade(out _);
+                if (!TargetMachine.SplitCapacity)
+                {
+                    int cost = TargetMachine.NextUpgradeCost;
+                    if (cost < 0 || !eco.TrySpend(cost)) return;
+                    TargetMachine.TryUpgrade(out _);
+                }
+                else
+                {
+                    int cost = WhichTrack == Track.Stack ? TargetMachine.NextStackCost : TargetMachine.NextSpeedCost;
+                    if (cost < 0 || !eco.TrySpend(cost)) return;
+                    if (WhichTrack == Track.Stack) TargetMachine.TryUpgradeStack(out _);
+                    else                            TargetMachine.TryUpgradeSpeed(out _);
+                }
             }
             else if (TargetHenCoop != null)
             {
-                int cost = TargetHenCoop.NextUpgradeCost;
+                int cost = WhichTrack == Track.Stack ? TargetHenCoop.NextStackCost : TargetHenCoop.NextSpeedCost;
                 if (cost < 0 || !eco.TrySpend(cost)) return;
-                TargetHenCoop.TryUpgrade(out _);
+                if (WhichTrack == Track.Stack) TargetHenCoop.TryUpgradeStack(out _);
+                else                            TargetHenCoop.TryUpgradeSpeed(out _);
             }
             else if (TargetCowPen != null)
             {

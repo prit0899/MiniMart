@@ -114,12 +114,15 @@ namespace MiniMart.AI
             if (available.Count == 0) return;
 
             var eco = GameManager.Instance?.Economy;
+            // Owner spec: a basket is at most 10 items total, any combination.
+            const int MaxBasket = 10;
             int itemCount = Kind switch
             {
-                Personality.Rich    => Random.Range(4, 10), // big baskets, trolley likely
-                Personality.Bargain => Random.Range(1, 4),  // small careful baskets
+                Personality.Rich    => Random.Range(4, MaxBasket + 1), // big baskets, trolley likely
+                Personality.Bargain => Random.Range(1, 4),             // small careful baskets
                 _                   => Random.Range(1, 8),
             };
+            itemCount = Mathf.Min(itemCount, MaxBasket);
             for (int i = 0; i < itemCount; i++)
             {
                 var item = available[Random.Range(0, available.Count)];

@@ -405,6 +405,23 @@ namespace MiniMart
             stoveGO.AddComponent<MachineBadge>();
             var rackFried = MakeRack(Core.ItemType.FriedEgg, new Vector2(-2f, 33f));
 
+            // ── Owner economy spec: Mart-1 stations are 4-in / 4-out, each with two
+            //    capacity upgrade tracks (input buffer + output buffer, 4 → 6 → 8) at
+            //    the owner's costs. MegaMart machines are untouched (SplitCapacity
+            //    stays false there, so they keep the old single-track behaviour).
+            void ConfigStation(Machine m, int[] inCosts, int[] outCosts)
+            {
+                if (m == null) return;
+                m.SplitCapacity = true;
+                m.InputUpgradeCosts = inCosts;
+                m.OutputUpgradeCosts = outCosts;
+            }
+            ConfigStation(blenderComp, Catalog.StationCatalog.BlenderInput, Catalog.StationCatalog.BlenderOutput);
+            ConfigStation(millComp,    Catalog.StationCatalog.MillInput,    Catalog.StationCatalog.MillOutput);
+            ConfigStation(stoveComp,   Catalog.StationCatalog.StoveInput,   Catalog.StationCatalog.StoveOutput);
+            ConfigStation(ovenComp,    Catalog.StationCatalog.OvenInput,    Catalog.StationCatalog.OvenOutput);
+            ovenComp.InputItem2 = Core.ItemType.Egg;   // Bread = Flour (input 1) + Egg (input 2)
+
             var db1 = CreateAt("Dustbin1", new Vector2(8f, 18f));
             PrimitiveFactory.Dustbin(db1);
 

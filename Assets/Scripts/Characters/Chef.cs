@@ -382,11 +382,19 @@ namespace MiniMart.Characters
                 case ChefState.GoingToOvenToLoad:
                     if (oven != null && flourCount > 0 && eggCount > 0)
                     {
-                        int load = Mathf.Min(flourCount, eggCount, oven.StackCapacity - oven.InputQueued);
-                        oven.LoadInput(load);
-                        flourCount -= load;
-                        eggCount -= load;
-                        CarryCount -= (load * 2);
+                        // Bread = Flour + Egg: flour fills input buffer 1, egg fills
+                        // input buffer 2 (each capped at the oven's input capacity).
+                        int load = Mathf.Min(flourCount, eggCount,
+                            oven.InputCapacity - oven.InputQueued,
+                            oven.InputCapacity - oven.InputQueued2);
+                        if (load > 0)
+                        {
+                            oven.LoadInput(load);    // flour
+                            oven.LoadInput2(load);   // egg
+                            flourCount -= load;
+                            eggCount -= load;
+                            CarryCount -= (load * 2);
+                        }
                     }
                     cState = ChefState.Deciding;
                     break;
