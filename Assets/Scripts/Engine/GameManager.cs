@@ -47,10 +47,20 @@ namespace MiniMart
         public WheatFarm WheatFarm;
         public HenCoop HenCoop;
         public CowPen CowPen;
+        public HerbPatch HerbPatch;
         public Machine Blender;
         public Machine Oven;
         public Machine Mill;
         public Machine Dairy;
+        public Machine LeafProcessor;
+        public Machine Stove;
+        // New map spec (bakery/café + corn chain).
+        public Machine CornProcessor;
+        public Machine CookieStation;
+        public Machine CoffeeDispenser;
+        public Production.CornField CornField;
+        public Production.HayFeedTrough HayFeedTrough;
+        public AI.AssistantNode AssistantNode;
 
         // Core runtime systems
         public StoreInventory Inventory { get; private set; }
@@ -62,18 +72,46 @@ namespace MiniMart
         // were conflated, so buying a personal upgrade suddenly unlocked bread.
         public int StoreLevel { get; private set; } = 1;
         public int StoreXp { get; private set; }
-        public int XpToNextLevel => 100 * StoreLevel; // L1->2: 100, L2->3: 200, ...
+        /// <summary>Content stops at L10 (Mart 2 endgame: Coffee/Counter 4).
+        /// Without a cap, XpToNextLevel grew forever with nothing to unlock —
+        /// an empty treadmill (batch-34 playthrough finding).</summary>
+        public const int MaxStoreLevel = 10;
+        public bool IsMaxLevel => StoreLevel >= MaxStoreLevel;
+        /// <summary>Lifetime checkouts this session+save — feeds the rotating
+        /// mini-goals in Retention.cs. Incremented by CashCounter.ProcessFront.</summary>
+        [System.NonSerialized] public int CustomersServed;
+        public int XpToNextLevel => 80 * StoreLevel; // L1->2: 80, L2->3: 160, ... (softer curve for 10 levels)
+
+        // Global "Crop Speed" upgrade (in-world Hub pad §"Crop Speed Upgrade Spot").
+        // Multiplies growth rate on tomato / wheat / corn / herb farms. Levels 1-5,
+        // multiplier at level N = 1 + (N-1) * 0.20 (Level 1 = base, Level 5 = 1.80x).
+        public int CropSpeedLevel { get; private set; } = 1;
+        public float CropSpeedMultiplier => 1f + (CropSpeedLevel - 1) * 0.20f;
+        public void BumpCropSpeed()
+        {
+            if (CropSpeedLevel >= 5) return;
+            CropSpeedLevel++;
+        }
 
         public void AddStoreXp(int amount)
         {
-            if (amount <= 0) return;
+            if (amount <= 0 || IsMaxLevel) return;
             StoreXp += amount;
-            while (StoreXp >= XpToNextLevel)
+            while (StoreXp >= XpToNextLevel && !IsMaxLevel)
             {
                 StoreXp -= XpToNextLevel;
                 StoreLevel++;
                 Debug.Log($"[GameManager] Store levelled up to {StoreLevel}!");
                 SyncLevelDependents();
+                AudioFx.LevelUp();
+                if (Player != null) Vfx.LevelUp(Player.transform.position); // firework burst
+                if (IsMaxLevel)
+                {
+                    // Mart complete! Freeze the XP bar full and throw a bigger party.
+                    StoreXp = 0;
+                    if (Player != null) Vfx.Stars(Player.transform.position);
+                    Debug.Log("[GameManager] MART COMPLETE — max level reached!");
+                }
             }
         }
 
@@ -116,8 +154,9 @@ namespace MiniMart
             Chef?.Configure(Inventory);
             Farmer?.Configure(Inventory);
 
-            // New game: a little pocket money so the first purchase pads are reachable
-            // after a few tomato sales (reference starts you with coins on the ground).
+            // New game: a little pocket money (reference starts you with a few coins on the
+            // ground). The first pad (HIRE FARMER, $15) needs a few tomato sales first —
+            // that's the intended early progression.
             if (!SaveSystem.HasSave())
                 Economy.PlayerCash = 10f;
 
@@ -135,14 +174,27 @@ namespace MiniMart
 
                 // Worker / machine / coop levels (default 1 when the key is absent).
                 int Lvl(string key) => data.UpgradeLevels.TryGetValue(key, out int l) ? l : 1;
-                Shelver1?.ApplyLevel(Lvl("Shelver1"));
-                Shelver2?.ApplyLevel(Lvl("Shelver2"));
-                Chef?.ApplyLevel(Lvl("Chef"));
-                Farmer?.ApplyLevel(Lvl("Farmer"));
+                // Split Stack/Speed tracks: newer saves carry per-track keys
+                // (`Shelver1_Stack`, `Shelver1_Speed`). Fall back to the legacy
+                // combined `Shelver1` key so pre-split saves still load cleanly.
+                int SLvl(string key, string track) =>
+                    data.UpgradeLevels.TryGetValue($"{key}_{track}", out int split) ? split : Lvl(key);
+                void ApplySplit(Characters.CharacterBase c, string key)
+                {
+                    if (c == null) return;
+                    c.ApplyStackLevel(SLvl(key, "Stack"));
+                    c.ApplySpeedLevel(SLvl(key, "Speed"));
+                }
+                ApplySplit(Shelver1, "Shelver1");
+                ApplySplit(Shelver2, "Shelver2");
+                ApplySplit(Chef,     "Chef");
+                ApplySplit(Farmer,   "Farmer");
                 Blender?.ApplyLevel(Lvl("Machine_Blender"));
                 Oven?.ApplyLevel(Lvl("Machine_Oven"));
                 Mill?.ApplyLevel(Lvl("Machine_Mill"));
                 Dairy?.ApplyLevel(Lvl("Machine_Dairy"));
+                LeafProcessor?.ApplyLevel(Lvl("Machine_LeafProcessor"));
+                Stove?.ApplyLevel(Lvl("Machine_Stove"));
                 HenCoop?.ApplyLevel(Lvl("HenCoop"));
                 CowPen?.ApplyLevel(Lvl("CowPen"));
 
@@ -154,8 +206,20 @@ namespace MiniMart
                 if (data.PurchasedPads != null)
                 {
                     foreach (var label in data.PurchasedPads) MarkPadPurchased(label);
-                    foreach (var pad in FindObjectsByType<Engine.PurchasePad>(FindObjectsSortMode.None))
+                    foreach (var pad in FindObjectsByType<Engine.PurchasePad>(FindObjectsInactive.Include, FindObjectsSortMode.None))
                         if (purchasedPads.Contains(pad.Label)) pad.RestorePurchased();
+                }
+
+                // Restore partial pad payments (money already sunk must not evaporate).
+                if (data.PadProgressLabels != null)
+                {
+                    for (int i = 0; i < data.PadProgressLabels.Count && i < data.PadProgressRemaining.Count; i++)
+                    {
+                        string lbl = data.PadProgressLabels[i];
+                        float rem = data.PadProgressRemaining[i];
+                        foreach (var pad in FindObjectsByType<Engine.PurchasePad>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                            if (pad.Label == lbl) { pad.ApplyProgress(rem); break; }
+                    }
                 }
 
                 Debug.Log($"[GameManager] Save loaded — cash ${Economy.PlayerCash:F2}, store level {StoreLevel}.");
@@ -163,15 +227,17 @@ namespace MiniMart
                 ComputeOfflineEarnings(data);
             }
 
-            // Wire Chef to farm nodes.
+            // Wire Chef to farm nodes and all machines.
             if (Chef != null)
             {
-                Chef.tomatoFarm = TomatoFarm;
-                Chef.wheatFarm = WheatFarm;
-                Chef.henCoop = HenCoop;
-                Chef.blender = Blender;
-                Chef.oven = Oven;
-                Chef.mill = Mill;
+                Chef.tomatoFarm    = TomatoFarm;
+                Chef.wheatFarm     = WheatFarm;
+                Chef.henCoop       = HenCoop;
+                Chef.blender       = Blender;
+                Chef.oven          = Oven;
+                Chef.mill          = Mill;
+                Chef.stove         = Stove;         // Bug #5: was missing — FriedEgg chain broken
+                Chef.leafProcessor = LeafProcessor; // Bug #5: was missing — HerbPack chain broken
             }
 
             if (Farmer != null)
@@ -180,6 +246,7 @@ namespace MiniMart
                 Farmer.wheatFarm  = WheatFarm;
                 Farmer.henCoop    = HenCoop;
                 Farmer.cowPen     = CowPen;
+                Farmer.herbPatch  = HerbPatch; // Bug #6: was missing — herb harvest chain broken
             }
 
             // Collect all tick-able characters.
@@ -268,7 +335,44 @@ namespace MiniMart
 
         public void MarkPadPurchased(string label)
         {
-            if (!string.IsNullOrEmpty(label)) purchasedPads.Add(label);
+            if (string.IsNullOrEmpty(label)) return;
+            purchasedPads.Add(label);
+
+            // Batch 40 onboarding: a plain-language "what now?" hint the moment
+            // each station is bought. Guarded by timeSinceLevelLoad so the
+            // save-restore replay at boot doesn't fire a toast barrage.
+            if (Time.timeSinceLevelLoad > 5f)
+            {
+                string hint = label switch
+                {
+                    "Hen Coop"        => "Chickens lay eggs — pick them up and shelve them!",
+                    "Hire Farmer"     => "Your farmer now harvests crops for you!",
+                    "Hire Shelver"    => "Your shelver keeps the shelves stocked!",
+                    "Hire Shelver B"  => "Your shelver keeps the shelves stocked!",
+                    "Hire Chef"       => "Your chef runs the machines for you!",
+                    "Ketchup Blender" => "Carry tomatoes to the Blender to make ketchup!",
+                    "Wheat Farm"      => "Harvest wheat — the Mill turns it into flour!",
+                    "Wheat Mill"      => "Carry wheat to the Mill to make flour!",
+                    "Bread Oven"      => "The Oven bakes flour + eggs into bread!",
+                    "Egg Stove"       => "Carry eggs to the Stove to fry them!",
+                    "Cow Pen"         => "Feed the cow hay, then collect the milk!",
+                    "Hay Trough"      => "Carry wheat here to feed the cow!",
+                    "Milk Bottler"    => "Carry milk to the Bottler to bottle it!",
+                    "Cheese Dairy"    => "Carry milk to the Dairy to make cheese!",
+                    "Corn Field"      => "Harvest corn when the cobs turn yellow!",
+                    "Corn Processor"  => "Carry corn here to process it!",
+                    "Apple Orchard"   => "Pick apples from the trees!",
+                    "Herb Patch"      => "Harvest herbs when the bushes fill out!",
+                    "Leaf Unit"       => "Carry herbs here to pack them!",
+                    "Coffee Bar"      => "Fresh coffee brews itself — collect the cups!",
+                    "MegaMart"        => "Stand on the blue pad to visit your MegaMart!",
+                    "Counter 2"       => "A second till opens — shorter queues!",
+                    "Counter 3"       => "Another till — the crowd flows faster!",
+                    "Counter 4"       => "Full checkout row — maximum throughput!",
+                    _                 => null,
+                };
+                if (hint != null) Toast.Show(hint, 5f);
+            }
         }
 
         /// <summary>Human-readable report shown once by the HUD; null when nothing pending.</summary>
@@ -383,14 +487,26 @@ namespace MiniMart
             }
 
             // Worker / machine / coop levels.
-            if (Shelver1 != null) data.UpgradeLevels["Shelver1"] = Shelver1.Level;
-            if (Shelver2 != null) data.UpgradeLevels["Shelver2"] = Shelver2.Level;
-            if (Chef != null)     data.UpgradeLevels["Chef"] = Chef.Level;
-            if (Farmer != null)   data.UpgradeLevels["Farmer"] = Farmer.Level;
+            // Split Stack/Speed tracks: write per-track keys. The combined `Level`
+            // key is kept for pre-split code paths that only read a single level
+            // (e.g. UI legacy fallback and the CashCounter unlock check).
+            void WriteSplit(Characters.CharacterBase c, string key)
+            {
+                if (c == null) return;
+                data.UpgradeLevels[key] = c.Level;
+                data.UpgradeLevels[$"{key}_Stack"] = c.StackLevel;
+                data.UpgradeLevels[$"{key}_Speed"] = c.SpeedLevel;
+            }
+            WriteSplit(Shelver1, "Shelver1");
+            WriteSplit(Shelver2, "Shelver2");
+            WriteSplit(Chef,     "Chef");
+            WriteSplit(Farmer,   "Farmer");
             if (Blender != null)  data.UpgradeLevels["Machine_Blender"] = Blender.Level;
             if (Oven != null)     data.UpgradeLevels["Machine_Oven"] = Oven.Level;
             if (Mill != null)     data.UpgradeLevels["Machine_Mill"] = Mill.Level;
             if (Dairy != null)    data.UpgradeLevels["Machine_Dairy"] = Dairy.Level;
+            if (LeafProcessor != null) data.UpgradeLevels["Machine_LeafProcessor"] = LeafProcessor.Level;
+            if (Stove != null)    data.UpgradeLevels["Machine_Stove"] = Stove.Level;
             if (HenCoop != null)  data.UpgradeLevels["HenCoop"] = HenCoop.Level;
             if (CowPen != null)   data.UpgradeLevels["CowPen"] = CowPen.Level;
 
@@ -400,6 +516,16 @@ namespace MiniMart
 
             // Expansion purchases.
             data.PurchasedPads.AddRange(purchasedPads);
+
+            // Partially-paid pads keep their progress across sessions.
+            foreach (var pad in FindObjectsByType<Engine.PurchasePad>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (pad.Remaining < pad.Cost - 0.01f)
+                {
+                    data.PadProgressLabels.Add(pad.Label);
+                    data.PadProgressRemaining.Add(pad.Remaining);
+                }
+            }
 
             SaveSystem.Save(data);
         }

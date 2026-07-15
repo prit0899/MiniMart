@@ -179,6 +179,15 @@ namespace MiniMart.AI
             thief.Inventory = Inventory;
             thief.BeginTheft();
             StartCoroutine(WatchThief(thief));
+
+            // One-time teaching moment: the NET button is never explained anywhere
+            // else, so the very first thief arrives with a how-to toast.
+            if (!PlayerPrefs.HasKey("MiniMart_ThiefTipShown"))
+            {
+                PlayerPrefs.SetInt("MiniMart_ThiefTipShown", 1);
+                PlayerPrefs.Save();
+                Engine.Toast.Show("A thief! Chase him and tap NET to catch him!", 5f);
+            }
         }
 
         private System.Collections.IEnumerator WatchThief(Thief thief)

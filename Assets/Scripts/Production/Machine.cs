@@ -26,6 +26,11 @@ namespace MiniMart.Production
                 MachineType.Oven => ProductionCatalog.OvenCurve(),
                 MachineType.Mill => ProductionCatalog.MillCurve(),
                 MachineType.Dairy => ProductionCatalog.DairyCurve(),
+                MachineType.LeafProcessor => ProductionCatalog.LeafProcessorCurve(),
+                MachineType.Stove => ProductionCatalog.StoveCurve(),
+                MachineType.CornProcessor   => ProductionCatalog.CornProcessorCurve(),
+                MachineType.CookieStation   => ProductionCatalog.CookieStationCurve(),
+                MachineType.CoffeeDispenser => ProductionCatalog.CoffeeDispenserCurve(),
                 _ => ProductionCatalog.BlenderCurve(),
             };
             ApplyLevel(1);
@@ -77,10 +82,63 @@ namespace MiniMart.Production
             InputQueued = Mathf.Min(StackCapacity, InputQueued + amount);
         }
 
+        private ParticleSystem steam;
+
+        /// <summary>White steam puffs while processing — reference-game machine feedback.</summary>
+        private void EnsureSteam()
+        {
+            if (steam != null) return;
+            var go = new GameObject("Steam");
+            go.transform.SetParent(transform, false);
+            go.transform.localPosition = new Vector3(0, 1.25f, 0);
+            steam = go.AddComponent<ParticleSystem>();
+
+            var main = steam.main;
+            main.startLifetime = 0.7f;
+            main.startSpeed = 0.6f;
+            // Softer / smaller puffs so it reads as steam, not blocky cubes.
+            main.startSize = new ParticleSystem.MinMaxCurve(0.12f, 0.22f);
+            main.startColor = new Color(1f, 1f, 1f, 0.4f);
+            main.maxParticles = 24;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+
+            var emission = steam.emission;
+            emission.rateOverTime = 3f;
+
+            var shape = steam.shape;
+            shape.shapeType = ParticleSystemShapeType.Cone;
+            shape.angle = 12f;
+            shape.radius = 0.12f;
+
+            var col = steam.colorOverLifetime;
+            col.enabled = true;
+            var grad = new Gradient();
+            grad.SetKeys(
+                new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                new[] { new GradientAlphaKey(0.5f, 0f), new GradientAlphaKey(0f, 1f) });
+            col.color = grad;
+
+            var renderer = steam.GetComponent<ParticleSystemRenderer>();
+            renderer.material = Engine.PrimitiveFactory.NewParticleMaterial();
+            steam.Stop();
+        }
+
+        /// <summary>Coffee dispenser produces without input — a self-contained "fresh
+        /// coffee" appliance in the café. All other machines require input queued
+        /// before they can produce.</summary>
+        private bool IsAutoProducer => Type == MachineType.CoffeeDispenser;
+
         private void Update()
         {
             InitializeIfNeeded();
-            if (InputQueued <= 0) return;
+            EnsureSteam();
+
+            bool processing = (IsAutoProducer || InputQueued > 0) && OutputReady < StackCapacity;
+            if (processing && !steam.isPlaying) steam.Play();
+            else if (!processing && steam.isPlaying) steam.Stop();
+
+            // Non-auto machines need input; auto machines just need output tray space.
+            if (!IsAutoProducer && InputQueued <= 0) return;
 
             // Output tray full: stall processing instead of consuming input and silently
             // DESTROYING the product (OutputReady was clamped, losing one item per cycle).
@@ -93,7 +151,7 @@ namespace MiniMart.Production
             if (processTimer >= secondsPerUnit)
             {
                 processTimer = 0f;
-                InputQueued -= 1;
+                if (!IsAutoProducer) InputQueued -= 1;
                 OutputReady = Mathf.Min(StackCapacity, OutputReady + 1);
             }
         }

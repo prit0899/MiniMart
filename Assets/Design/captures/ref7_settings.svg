@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Settings modal — matches HUDBuilder.SettingsPanel -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 620" font-family="-apple-system, sans-serif" font-size="13">
+  <rect width="980" height="620" fill="#3a5a2f" opacity="0.9"/>
+  <rect x="90" y="100" width="800" height="380" rx="18" fill="#b79eec"/>
+  <rect x="850" y="90" width="40" height="40" rx="10" fill="#e63c3c"/>
+  <text x="870" y="118" text-anchor="middle" fill="#fff" font-size="22" font-weight="bold">×</text>
+  <text x="490" y="150" text-anchor="middle" fill="#111" font-size="30" font-weight="bold">SETTINGS</text>
+  <rect x="380" y="200" width="42" height="34" rx="8" fill="#7bd7d1"/>
+  <text x="401" y="223" text-anchor="middle" fill="#fff" font-size="18" font-weight="bold">🔊</text>
+  <rect x="440" y="214" width="200" height="6" rx="3" fill="#7bd7d1" opacity="0.5"/>
+  <circle cx="610" cy="217" r="10" fill="#7bd7d1"/>
+  <text x="870" y="465" text-anchor="end" fill="#4a3a72" font-size="14">v1.18.41-0</text>
+</svg>

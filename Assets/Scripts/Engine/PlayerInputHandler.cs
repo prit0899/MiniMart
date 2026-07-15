@@ -110,14 +110,38 @@ namespace MiniMart.Engine
                 camForward.Normalize();
                 camRight.Normalize();
 
-                // Analog: partial stick deflection = partial speed, like the reference game.
+                // Analog: partial stick deflection = partial speed, like the reference
+                // game — but shaped with a smoothstep so the character commits to full
+                // speed by ~70% deflection instead of feeling mushy at mid-stick.
                 Vector3 dir = (camForward * v + camRight * h).normalized;
-                float throttle = Mathf.Clamp01(smoothedInput.magnitude);
-                Vector3 next = player.transform.position + dir * player.CurrentSpeed * throttle * Time.deltaTime;
+                float raw01 = Mathf.Clamp01(smoothedInput.magnitude);
+                float throttle = raw01 * raw01 * (3f - 2f * raw01); // smoothstep
+                // Dash skill: short speed burst on the DASH button (see TriggerDash).
+                float dash = Time.time < dashUntil ? 1.6f : 1f;
+                Vector3 next = player.transform.position + dir * player.CurrentSpeed * throttle * dash * Time.deltaTime;
 
-                // Keep player clamped to boundaries
-                next.x = Mathf.Clamp(next.x, 1f, 29f);
-                next.z = Mathf.Clamp(next.z, 1f, 21f);
+                // Keep player inside the world. These bounds MUST match the
+                // pathfinder grid built in SceneBootstrapper (origin (-50,0,0),
+                // 100×82 cells) — a stale clamp from the original tiny map kept
+                // the player boxed into x[1,29] z[1,21], which read as "can't
+                // walk around the mall". Walls/fences still block via the grid
+                // check below; this is only the outer map edge.
+                next.x = Mathf.Clamp(next.x, -49f, 49f);
+                next.z = Mathf.Clamp(next.z, 1f, 81f);
+
+                // Walls/fences block direct movement too (NPCs already respect the grid
+                // via A*). Try the full step, then each axis alone so the player slides
+                // along walls instead of stopping dead.
+                var pf = MiniMart.Map.GridPathfinder.Instance;
+                if (pf != null && !pf.IsWalkableWorld(next))
+                {
+                    Vector3 cur = player.transform.position;
+                    var slideX = new Vector3(next.x, next.y, cur.z);
+                    var slideZ = new Vector3(cur.x, next.y, next.z);
+                    if (pf.IsWalkableWorld(slideX)) next = slideX;
+                    else if (pf.IsWalkableWorld(slideZ)) next = slideZ;
+                    else next = cur;
+                }
 
                 // If the clamp cancelled the step (pushing into a map edge), don't play
                 // the walk animation — that reads as "moving but stuck".
@@ -190,6 +214,21 @@ namespace MiniMart.Engine
 
         /// <summary>Called by the runtime HUD builder after this component's Awake has already run,
         /// to attach on-screen controls and register the net button click.</summary>
+        // ── Dash skill (batch 36) ────────────────────────────────────────────
+        // Short 1.6x speed burst on demand; 2s duration, 5s cooldown. Gives the
+        // movement loop an active verb without complicating steering.
+        private float dashUntil = -999f;
+        private float dashReadyAt;
+        public bool DashReady => Time.time >= dashReadyAt;
+
+        public void TriggerDash()
+        {
+            if (!DashReady) return;
+            dashUntil = Time.time + 2f;
+            dashReadyAt = Time.time + 5f;
+            AudioFx.Sale(); // light whoosh-ish feedback from the existing bus
+        }
+
         public void BindOnScreenControls(Joystick joystick, UnityEngine.UI.Button netButton)
         {
             MobileJoystick = joystick;
@@ -226,6 +265,26 @@ namespace MiniMart.Engine
     }
 
     /// <summary>
+    /// Greys the DASH button out while the dash skill is on cooldown so its
+    /// state is always readable at a glance (batch 36).
+    /// </summary>
+    public class DashCooldownTint : MonoBehaviour
+    {
+        public PlayerInputHandler Input;
+        public UnityEngine.UI.Image Target;
+        private Color readyColor;
+        private bool cached;
+
+        private void Update()
+        {
+            if (Input == null || Target == null) return;
+            if (!cached) { readyColor = Target.color; cached = true; }
+            var dim = readyColor; dim.a = 0.35f;
+            Target.color = Input.DashReady ? readyColor : dim;
+        }
+    }
+
+    /// <summary>
     /// Proper uGUI floating joystick. Touching anywhere in the background moves the joystick
     /// to that touch position, allowing steering from anywhere on the screen.
     /// </summary>
@@ -253,12 +312,26 @@ namespace MiniMart.Engine
             canvas = GetComponentInParent<Canvas>();
             if (Background == null) Background = transform as RectTransform;
             rootRect = canvas?.GetComponent<RectTransform>();
-            
-            // Hide initially until touched (Floating behavior)
-            if (Background != null && Background.GetComponent<UnityEngine.UI.Image>() != null)
-                Background.GetComponent<UnityEngine.UI.Image>().enabled = false;
-            if (Handle != null && Handle.GetComponent<UnityEngine.UI.Image>() != null)
-                Handle.GetComponent<UnityEngine.UI.Image>().enabled = false;
+        }
+
+        private void Start()
+        {
+            // Hide initially until touched (floating behavior). This must run in Start,
+            // not Awake: the HUD builder assigns Background/Handle AFTER AddComponent
+            // (which is when Awake fires), so hiding in Awake targeted the wrong rect
+            // and the joystick sat visible in the middle of the screen at boot.
+            SetVisible(false);
+        }
+
+        private void SetVisible(bool visible)
+        {
+            // Toggle EVERY image under the background — the direction arrows and
+            // the blue hand cursor are child images, and skipping them left a
+            // ghost "blue blob + 4 dots" floating at screen centre while the
+            // ring/knob were hidden (visible in every playtest capture).
+            if (Background != null)
+                foreach (var img in Background.GetComponentsInChildren<UnityEngine.UI.Image>(true))
+                    img.enabled = visible;
         }
 
         public void OnPointerDown(UnityEngine.EventSystems.PointerEventData eventData)
@@ -266,10 +339,7 @@ namespace MiniMart.Engine
             // Show joystick and move it to touch position
             if (Background != null)
             {
-                if (Background.GetComponent<UnityEngine.UI.Image>() != null)
-                    Background.GetComponent<UnityEngine.UI.Image>().enabled = true;
-                if (Handle != null && Handle.GetComponent<UnityEngine.UI.Image>() != null)
-                    Handle.GetComponent<UnityEngine.UI.Image>().enabled = true;
+                SetVisible(true);
 
                 Camera cam = null;
                 if (canvas != null && canvas.renderMode == RenderMode.ScreenSpaceCamera)
@@ -310,12 +380,9 @@ namespace MiniMart.Engine
         {
             input = Vector2.zero;
             if (Handle != null) Handle.anchoredPosition = Vector2.zero;
-            
+
             // Hide when released
-            if (Background != null && Background.GetComponent<UnityEngine.UI.Image>() != null)
-                Background.GetComponent<UnityEngine.UI.Image>().enabled = false;
-            if (Handle != null && Handle.GetComponent<UnityEngine.UI.Image>() != null)
-                Handle.GetComponent<UnityEngine.UI.Image>().enabled = false;
+            SetVisible(false);
         }
     }
 }

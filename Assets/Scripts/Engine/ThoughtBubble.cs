@@ -5,15 +5,17 @@ using MiniMart.Core;
 namespace MiniMart.Engine
 {
     /// <summary>
-    /// Reference-style thought bubble above a buyer: a colored item chip plus "collected/wanted"
-    /// while shopping, and a "$" chip while queueing at the till.
+    /// Reference-parity thought bubble: a white rounded speech bubble with just a
+    /// colored item icon inside — no text. Reference "My Mini Mart" bubbles are
+    /// icon-only (a tomato chip means 'wants tomatoes'). While queueing at the
+    /// till the bubble swaps the icon for a laptop/cash symbol.
     /// </summary>
     public class ThoughtBubble : MonoBehaviour
     {
         private Buyer buyer;
         private GameObject root;
         private MeshRenderer iconRenderer;
-        private TextMesh label;
+        private MeshRenderer queueIconRenderer;
         private float timer;
 
         private void Start()
@@ -22,37 +24,32 @@ namespace MiniMart.Engine
 
             root = new GameObject("ThoughtBubble");
             root.transform.SetParent(transform, false);
-            root.transform.localPosition = new Vector3(0.55f, 2.0f, 0);
+            root.transform.localPosition = new Vector3(0.45f, 1.9f, 0);
             root.AddComponent<Billboard>();
 
-            // Backboard.
-            var back = PrimitiveFactory.Part(PrimitiveType.Cube, root.transform,
-                Vector3.zero, new Vector3(1.0f, 0.55f, 0.05f), new Color(1f, 1f, 1f, 1f));
+            // Round white backboard — reference bubble is a circle, not a rectangle.
+            var back = PrimitiveFactory.Part(PrimitiveType.Sphere, root.transform,
+                Vector3.zero, new Vector3(0.7f, 0.7f, 0.08f), new Color(1f, 1f, 1f, 1f));
             back.name = "Back";
 
-            // Item chip.
+            // Tiny "tail" (small sphere pointing down toward the buyer).
+            var tail = PrimitiveFactory.Part(PrimitiveType.Sphere, root.transform,
+                new Vector3(-0.22f, -0.35f, 0f), new Vector3(0.18f, 0.18f, 0.05f), new Color(1f, 1f, 1f, 1f));
+            tail.name = "Tail";
+
+            // Item chip — square colored icon centered in the bubble.
             var icon = PrimitiveFactory.Part(PrimitiveType.Cube, root.transform,
-                new Vector3(-0.28f, 0, -0.06f), new Vector3(0.3f, 0.3f, 0.05f), Color.white);
+                new Vector3(0f, 0f, -0.06f), new Vector3(0.38f, 0.38f, 0.05f), Color.white);
             icon.name = "Icon";
             iconRenderer = icon.GetComponent<MeshRenderer>();
 
-            // Progress text.
-            var textGO = new GameObject("Progress");
-            textGO.transform.SetParent(root.transform, false);
-            textGO.transform.localPosition = new Vector3(0.18f, 0, -0.06f);
-            label = textGO.AddComponent<TextMesh>();
-            label.fontSize = 40;
-            label.characterSize = 0.05f;
-            label.anchor = TextAnchor.MiddleCenter;
-            label.alignment = TextAlignment.Center;
-            label.color = new Color(0.15f, 0.15f, 0.15f);
-            var font = HUDBuilder.UIFont;
-            if (font != null)
-            {
-                label.font = font;
-                var mr = textGO.GetComponent<MeshRenderer>();
-                if (mr != null) mr.material = font.material;
-            }
+            // Alternate icon for queueing: dark 'laptop/register' rectangle. Kept
+            // as a separate object so we can toggle without recoloring the same mesh.
+            var qIcon = PrimitiveFactory.Part(PrimitiveType.Cube, root.transform,
+                new Vector3(0f, 0f, -0.06f), new Vector3(0.42f, 0.28f, 0.05f), new Color(0.18f, 0.20f, 0.24f));
+            qIcon.name = "QueueIcon";
+            queueIconRenderer = qIcon.GetComponent<MeshRenderer>();
+            qIcon.SetActive(false);
         }
 
         private void Update()
@@ -68,28 +65,33 @@ namespace MiniMart.Engine
                 return;
             }
 
+            // Queueing: swap to the laptop/register icon (reference behavior).
             if (buyer.InQueue)
             {
                 root.SetActive(true);
-                iconRenderer.material.color = new Color(0.3f, 0.8f, 0.35f);
-                label.text = "$";
+                if (iconRenderer != null) iconRenderer.gameObject.SetActive(false);
+                if (queueIconRenderer != null) queueIconRenderer.gameObject.SetActive(true);
                 return;
             }
 
-            // First outstanding wish: colored chip + collected/wanted.
+            // First outstanding wish → colored item chip only, no text.
             foreach (var kv in buyer.Basket)
             {
                 if (kv.Value <= 0) continue;
                 ItemType item = kv.Key;
-                int want = buyer.OriginalWant.TryGetValue(item, out int w) ? w : kv.Value;
-                int have = want - kv.Value;
                 root.SetActive(true);
-                iconRenderer.material.color = PrimitiveFactory.ItemColor(item);
-                label.text = $"{have}/{want}";
+                if (queueIconRenderer != null) queueIconRenderer.gameObject.SetActive(false);
+                if (iconRenderer != null)
+                {
+                    iconRenderer.gameObject.SetActive(true);
+                    iconRenderer.material.color = PrimitiveFactory.ItemColor(item);
+                }
                 return;
             }
 
-            root.SetActive(false); // nothing left to wish for
+            // Wish list complete, but not queued yet — hide the bubble entirely
+            // (reference doesn't show anything during the short walk to the till).
+            root.SetActive(false);
         }
     }
 }

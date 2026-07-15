@@ -24,6 +24,8 @@ namespace MiniMart.Save
         public float TotalPlaySeconds;
         public string SaveTimestamp;
         public List<string> PurchasedPads = new List<string>(); // expansion pads already bought
+        public List<string> PadProgressLabels = new List<string>();   // partially-paid pads…
+        public List<float>  PadProgressRemaining = new List<float>(); // …and their outstanding cost
 
         // ── Serialized backing storage (JsonUtility-compatible) ──
         [SerializeField] private List<string> _invKeys = new List<string>();
@@ -78,6 +80,10 @@ namespace MiniMart.Save
     {
         private const string SAVE_KEY = "MiniMart_Save_v1";
 
+        /// <summary>Reference shows a "Save..." toast bottom-left during autosave.
+        /// HUDController subscribes to this to flash the badge on for ~2 seconds.</summary>
+        public static event System.Action OnSaved;
+
         public static void Save(GameSaveData data)
         {
             data.SaveTimestamp = DateTime.UtcNow.ToString("o");
@@ -85,6 +91,7 @@ namespace MiniMart.Save
             PlayerPrefs.SetString(SAVE_KEY, json);
             PlayerPrefs.Save();
             Debug.Log("[SaveSystem] Game saved.");
+            OnSaved?.Invoke();
         }
 
         public static GameSaveData Load()

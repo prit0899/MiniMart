@@ -18,11 +18,17 @@ namespace MiniMart.AI
         public List<CashCounter> Counters = new List<CashCounter>();
 
         [Header("Spawn Intervals (seconds)")]
-        // Reference pacing (My Mini Mart): a new buyer roughly every 1-2 seconds.
-        public float MinInterval = 1.5f;
-        public float MaxInterval = 3f;
-        public float LevelScaleFactor = 0.9f; // each player level shrinks the interval by 10%
-        public int MaxConcurrentBuyers = 12;  // pooled cap per TDD 15
+        // Playtest retune: the every-1-2s reference pace only fits a MATURE
+        // store. At L1 (one tomato stand, hand-restocked) that demand emptied
+        // the shelf instantly and filled the store with waiting statues. Start
+        // gentle; level scaling ramps the crowd up as supply grows.
+        public float MinInterval = 4f;
+        public float MaxInterval = 7f;
+        public float LevelScaleFactor = 0.75f; // each store level speeds spawns by 25%
+        public int MaxConcurrentBuyers = 12;   // absolute cap per TDD 15
+
+        /// <summary>Effective crowd cap grows with the store: 6 at L1 up to 12.</summary>
+        private int LevelCap => Mathf.Min(MaxConcurrentBuyers, 4 + 2 * currentPlayerLevel);
 
         private float timer;
         private float nextSpawn;
@@ -71,9 +77,10 @@ namespace MiniMart.AI
         {
             if (EntranceDoor == null) return;
 
-            // Cap the crowd: prune buyers that finished and left, then respect the pool limit.
+            // Cap the crowd: prune buyers that finished and left, then respect the
+            // level-scaled pool limit (6 at L1, growing to 12 at max level).
             activeBuyers.RemoveAll(b => b == null);
-            if (activeBuyers.Count >= MaxConcurrentBuyers) return;
+            if (activeBuyers.Count >= LevelCap) return;
 
             GameObject go;
             if (BuyerPrefab != null)
@@ -88,7 +95,11 @@ namespace MiniMart.AI
                 go.AddComponent<Engine.WobbleAnimator>();
                 go.AddComponent<MiniMart.UI.CarryVisual>();
                 // Same body/head/eyes build as every other character — no more bare capsules.
-                Engine.PrimitiveFactory.BuildCharacter(go, BuyerPalette[Random.Range(0, BuyerPalette.Length)]);
+                // Shopper variant: color-hashed hair (brown/black/blonde) + a little
+                // handbag on the side so shoppers read as distinct people, not clones.
+                Engine.PrimitiveFactory.BuildCharacter(go,
+                    BuyerPalette[Random.Range(0, BuyerPalette.Length)],
+                    Engine.PrimitiveFactory.CharacterRole.Shopper);
             }
             var buyer = go.GetComponent<Buyer>();
             buyer?.Init(currentPlayerLevel, AllShelves, Counters);

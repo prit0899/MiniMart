@@ -68,7 +68,7 @@ namespace MiniMart.Economy
 
         public void Deposit(float amount) => PlayerCash += amount;
 
-        public bool TrySpend(int amount)
+        public bool TrySpend(float amount)
         {
             if (PlayerCash < amount) return false;
             PlayerCash -= amount;

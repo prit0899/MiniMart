@@ -25,6 +25,11 @@ namespace MiniMart.Engine
         private void OnLog(string condition, string stackTrace, LogType type)
         {
             if (type != LogType.Error && type != LogType.Exception && type != LogType.Assert) return;
+            // Ignore noise from editor-side tooling (Unity MCP/Assistant connection chatter,
+            // Unity Services deployment) — this overlay is for GAME errors only.
+            if (condition.Contains("connection.state_change") ||
+                condition.Contains("WebSocketException") ||
+                condition.Contains("[Deployment]")) return;
             errorCount++;
             lastError = condition;
             dirty = true;

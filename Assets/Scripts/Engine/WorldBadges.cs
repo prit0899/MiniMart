@@ -10,20 +10,34 @@ namespace MiniMart.Engine
     /// </summary>
     public abstract class WorldBadge : MonoBehaviour
     {
-        public float Height = 2.2f;
+        public float Height = 1.9f;
         public float RefreshInterval = 0.4f;
 
         protected TextMesh badge;
+        protected GameObject chip;         // dark tag backboard
         private float timer;
 
         private void Start()
         {
-            var go = new GameObject("Badge");
-            go.transform.SetParent(transform, false);
-            go.transform.localPosition = new Vector3(0, Height, 0);
-            badge = go.AddComponent<TextMesh>();
-            badge.fontSize = 40;
-            badge.characterSize = 0.075f;
+            // Compact reference-style pill: a small dark chip with tiny white text
+            // sitting just above the object. Way less noisy than the tall floating
+            // labels that dominated the earlier render.
+            chip = new GameObject("Chip");
+            chip.transform.SetParent(transform, false);
+            chip.transform.localPosition = new Vector3(0, Height, 0);
+            chip.AddComponent<Billboard>();
+
+            // Chip background — dark rounded pill.
+            PrimitiveFactory.Part(PrimitiveType.Cube, chip.transform,
+                Vector3.zero, new Vector3(0.55f, 0.22f, 0.02f),
+                new Color(0.18f, 0.18f, 0.22f, 1f));
+
+            var textGO = new GameObject("Text");
+            textGO.transform.SetParent(chip.transform, false);
+            textGO.transform.localPosition = new Vector3(0f, 0f, -0.02f);
+            badge = textGO.AddComponent<TextMesh>();
+            badge.fontSize = 48;
+            badge.characterSize = 0.03f;
             badge.anchor = TextAnchor.MiddleCenter;
             badge.alignment = TextAlignment.Center;
             badge.color = Color.white;
@@ -31,10 +45,10 @@ namespace MiniMart.Engine
             if (font != null)
             {
                 badge.font = font;
-                var mr = go.GetComponent<MeshRenderer>();
+                var mr = textGO.GetComponent<MeshRenderer>();
                 if (mr != null) mr.material = font.material;
             }
-            go.AddComponent<Billboard>();
+            chip.SetActive(false); // start hidden — subclasses toggle it
             Refresh();
         }
 
@@ -46,10 +60,16 @@ namespace MiniMart.Engine
             Refresh();
         }
 
+        /// <summary>Show or hide the whole chip in one call from subclasses.</summary>
+        protected void Show(bool visible)
+        {
+            if (chip != null && chip.activeSelf != visible) chip.SetActive(visible);
+        }
+
         protected abstract void Refresh();
     }
 
-    /// <summary>Lists the store inventory's non-empty item counts above the storage depot.</summary>
+    /// <summary>Depot inventory chip — shown only while it holds anything.</summary>
     public class StorageBadge : WorldBadge
     {
         protected override void Refresh()
@@ -57,26 +77,17 @@ namespace MiniMart.Engine
             var inv = GameManager.Instance?.Inventory;
             if (inv == null || badge == null) return;
 
-            var sb = new System.Text.StringBuilder();
-            int onLine = 0;
-            foreach (var kv in inv.Stocks)
-            {
-                if (kv.Value.Count <= 0) continue;
-                sb.Append(ShortName(kv.Key)).Append(' ').Append(kv.Value.Count).Append("  ");
-                if (++onLine % 3 == 0) sb.Append('\n');
-            }
-            badge.text = sb.Length == 0 ? "STORAGE" : sb.ToString().TrimEnd();
+            int total = 0;
+            foreach (var kv in inv.Stocks) total += kv.Value.Count;
+            if (total == 0) { Show(false); return; }
+            badge.text = $"S {total}";
+            Show(true);
         }
-
-        private static string ShortName(ItemType t) => t switch
-        {
-            ItemType.TomatoKetchup => "Ketchup",
-            ItemType.WheatFlour => "Flour",
-            _ => t.ToString(),
-        };
     }
 
-    /// <summary>Shows a machine's input queue and finished output ("in 3/4  out 2").</summary>
+    /// <summary>Machine chip — hidden when idle-empty, shown as "IN n" while working
+    /// or "OUT n" when output is ready to collect. Never the reference's "in 0/4 out 0"
+    /// clutter that stayed visible over every idle appliance.</summary>
     public class MachineBadge : WorldBadge
     {
         private Machine machine;
@@ -85,7 +96,20 @@ namespace MiniMart.Engine
         protected override void Refresh()
         {
             if (machine == null || badge == null) return;
-            badge.text = $"in {machine.InputQueued}/{machine.StackCapacity}   out {machine.OutputReady}";
+            if (machine.OutputReady > 0)
+            {
+                badge.text = $"{machine.OutputReady}";
+                Show(true);
+            }
+            else if (machine.InputQueued > 0)
+            {
+                badge.text = $"{machine.InputQueued}/{machine.StackCapacity}";
+                Show(true);
+            }
+            else
+            {
+                Show(false);
+            }
         }
     }
 }

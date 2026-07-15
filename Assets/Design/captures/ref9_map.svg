@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Top-down SVG render of the current map, drawn from the exact coords in
+  SceneBootstrapper.cs (Batch 21 + Batch 23). Not a live capture — a
+  visual audit derived from code so parity vs Refer/Map.png can be
+  eyeballed without Unity MCP.
+
+  World mapping: X world [-50, 50] → SVG X [40, 940] (10 px/unit).
+                 Z world [0, 82]   → SVG Y [780, 40]  (Y-flipped).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 820" font-family="-apple-system, sans-serif" font-size="13">
+  <rect width="980" height="820" fill="#111"/>
+
+  <!-- grass base 100×40 at Z=0-40, plus 100×2 pavement strip at Z=60-62 -->
+  <rect x="40" y="410" width="900" height="370" fill="#8ec765"/>
+  <!-- store floor Z=40-60: beige at X=-20..10, pink at X=10..30 -->
+  <rect x="340" y="230" width="300" height="180" fill="#e6d3a2"/>
+  <rect x="640" y="230" width="200" height="180" fill="#f5d4e7"/>
+  <!-- pavement strip Z=60-62 -->
+  <rect x="40" y="210" width="900" height="20" fill="#c7c1b7"/>
+  <!-- broad asphalt road Z=62-78 (100×16) -->
+  <rect x="40" y="60" width="900" height="150" fill="#464648"/>
+  <!-- road centerline dashes -->
+  <g fill="#eeead9">
+    <rect x="70"  y="130" width="60" height="6"/>
+    <rect x="160" y="130" width="60" height="6"/>
+    <rect x="250" y="130" width="60" height="6"/>
+    <rect x="340" y="130" width="60" height="6"/>
+    <rect x="430" y="130" width="60" height="6"/>
+    <rect x="520" y="130" width="60" height="6"/>
+    <rect x="610" y="130" width="60" height="6"/>
+    <rect x="700" y="130" width="60" height="6"/>
+    <rect x="790" y="130" width="60" height="6"/>
+    <rect x="880" y="130" width="60" height="6"/>
+  </g>
+
+  <!-- store walls (Z=40 and Z=60) -->
+  <line x1="340" y1="410" x2="640" y2="410" stroke="#c8c2a7" stroke-width="4"/>
+  <line x1="740" y1="410" x2="840" y2="410" stroke="#c8c2a7" stroke-width="4"/>
+  <line x1="340" y1="230" x2="440" y2="230" stroke="#c8c2a7" stroke-width="4"/>
+  <line x1="510" y1="230" x2="740" y2="230" stroke="#c8c2a7" stroke-width="4"/>
+  <line x1="790" y1="230" x2="840" y2="230" stroke="#c8c2a7" stroke-width="4"/>
+  <!-- east wall X=30 (SVG X=840) -->
+  <line x1="840" y1="230" x2="840" y2="410" stroke="#c8c2a7" stroke-width="4"/>
+  <!-- west wall split with delivery gap Z=53..57 (SVG Y=270..310) -->
+  <line x1="340" y1="230" x2="340" y2="270" stroke="#c8c2a7" stroke-width="4"/>
+  <line x1="340" y1="310" x2="340" y2="410" stroke="#c8c2a7" stroke-width="4"/>
+
+  <!-- candy-striped angled gate at (-20, 55) - Batch 23 -->
+  <g transform="translate(340,290) rotate(-30)">
+    <rect x="-25" y="-6" width="10" height="12" fill="#e94f4f"/>
+    <rect x="-15" y="-6" width="10" height="12" fill="#f2f2ec"/>
+    <rect x="-5"  y="-6" width="10" height="12" fill="#e94f4f"/>
+    <rect x="5"   y="-6" width="10" height="12" fill="#f2f2ec"/>
+    <rect x="15"  y="-6" width="10" height="12" fill="#e94f4f"/>
+  </g>
+
+  <!-- van parking spot (white outlined rectangle) at (-18, 55) -->
+  <rect x="304" y="270" width="36" height="40" fill="none" stroke="#f2f2ec" stroke-width="2"/>
+  <!-- van itself (green pickup) parked on the spot -->
+  <rect x="308" y="278" width="28" height="24" fill="#2e6b3b"/>
+  <rect x="312" y="270" width="20" height="10" fill="#a9d1e6"/>
+
+  <!-- buyer entrance/exit path from road to north wall gap X≈-8, X≈18 -->
+  <line x1="440" y1="130" x2="440" y2="230" stroke="#ffe6a8" stroke-width="2" stroke-dasharray="6 4"/>
+  <line x1="740" y1="130" x2="740" y2="230" stroke="#ffe6a8" stroke-width="2" stroke-dasharray="6 4"/>
+
+  <!-- LIVESTOCK WEST: hen coop + cow pen -->
+  <ellipse cx="150" cy="620" rx="35" ry="22" fill="#a37340"/>
+  <ellipse cx="150" cy="620" rx="26" ry="16" fill="#7a5628"/>
+  <ellipse cx="145" cy="615" rx="6" ry="4" fill="#fffbe6"/>
+  <ellipse cx="158" cy="622" rx="6" ry="4" fill="#fffbe6"/>
+  <ellipse cx="152" cy="628" rx="6" ry="4" fill="#fffbe6"/>
+  <ellipse cx="250" cy="640" rx="35" ry="22" fill="#a37340"/>
+  <rect x="230" y="630" width="40" height="18" fill="#fff"/>
+  <rect x="240" y="635" width="6" height="6" fill="#111"/>
+  <rect x="256" y="633" width="6" height="6" fill="#111"/>
+
+  <!-- AGRICULTURE EAST: tomato + wheat + corn -->
+  <g transform="translate(560,600)">
+    <rect x="0" y="0" width="70" height="8" fill="#6b3e1f"/>
+    <rect x="0" y="18" width="70" height="8" fill="#6b3e1f"/>
+    <circle cx="10" cy="4" r="5" fill="#e94f4f"/><circle cx="35" cy="4" r="5" fill="#e94f4f"/><circle cx="60" cy="4" r="5" fill="#e94f4f"/>
+    <circle cx="10" cy="22" r="5" fill="#e94f4f"/><circle cx="35" cy="22" r="5" fill="#e94f4f"/><circle cx="60" cy="22" r="5" fill="#e94f4f"/>
+  </g>
+  <g transform="translate(660,600)">
+    <rect x="0" y="0" width="72" height="36" fill="#6b3e1f"/>
+    <g fill="#e8c74e">
+      <rect x="6"  y="4"  width="8" height="10"/><rect x="22" y="4" width="8" height="10"/><rect x="38" y="4" width="8" height="10"/><rect x="54" y="4" width="8" height="10"/>
+      <rect x="6"  y="22" width="8" height="10"/><rect x="22" y="22" width="8" height="10"/><rect x="38" y="22" width="8" height="10"/><rect x="54" y="22" width="8" height="10"/>
+    </g>
+  </g>
+  <g transform="translate(760,600)">
+    <rect x="0" y="0" width="72" height="36" fill="#6b3e1f"/>
+    <g fill="#98c46c">
+      <rect x="6"  y="6"  width="10" height="20"/><rect x="24" y="6" width="10" height="20"/><rect x="42" y="6" width="10" height="20"/><rect x="60" y="6" width="10" height="20"/>
+    </g>
+  </g>
+
+  <!-- SUPPLY GRASS: upgrade pads center -->
+  <g transform="translate(420,600)">
+    <ellipse cx="0"  cy="0" rx="18" ry="9" fill="#83e07a" opacity="0.7"/>
+    <ellipse cx="45" cy="0" rx="18" ry="9" fill="#83e07a" opacity="0.7"/>
+    <ellipse cx="90" cy="0" rx="18" ry="9" fill="#83e07a" opacity="0.7"/>
+    <text x="0" y="26" text-anchor="middle" fill="#333" font-size="10">SPD</text>
+    <text x="45" y="26" text-anchor="middle" fill="#333" font-size="10">CARRY</text>
+    <text x="90" y="26" text-anchor="middle" fill="#333" font-size="10">CROP</text>
+  </g>
+
+  <!-- Processing strip Z=28-38 -->
+  <g transform="translate(360,450)">
+    <rect x="0"  y="0" width="70" height="30" fill="#c9c9cf" stroke="#6a6a76" stroke-width="1"/>
+    <rect x="80" y="0" width="70" height="30" fill="#c9c9cf" stroke="#6a6a76" stroke-width="1"/>
+    <rect x="160" y="0" width="70" height="30" fill="#c9c9cf" stroke="#6a6a76" stroke-width="1"/>
+    <text x="35"  y="18" text-anchor="middle" fill="#111" font-size="10">Blender</text>
+    <text x="115" y="18" text-anchor="middle" fill="#111" font-size="10">Oven</text>
+    <text x="195" y="18" text-anchor="middle" fill="#111" font-size="10">Mill</text>
+  </g>
+
+  <!-- Supermarket furniture placeholders -->
+  <g fill="#c88d5f">
+    <rect x="380" y="260" width="34" height="24"/> <rect x="440" y="260" width="34" height="24"/>
+    <rect x="500" y="260" width="34" height="24"/> <rect x="560" y="260" width="34" height="24"/>
+    <rect x="380" y="320" width="34" height="24"/> <rect x="440" y="320" width="34" height="24"/>
+    <rect x="500" y="320" width="34" height="24"/> <rect x="560" y="320" width="34" height="24"/>
+  </g>
+  <!-- Registers on the east edge of beige -->
+  <g fill="#7bd7d1">
+    <rect x="600" y="270" width="30" height="14"/>
+    <rect x="600" y="300" width="30" height="14"/>
+  </g>
+  <!-- Bakery displays on pink floor -->
+  <g fill="#c88d5f">
+    <rect x="680" y="260" width="40" height="20"/>
+    <rect x="750" y="260" width="40" height="20"/>
+    <rect x="680" y="320" width="40" height="20"/>
+    <rect x="750" y="320" width="40" height="20"/>
+  </g>
+
+  <!-- Perimeter trees ring (X ±50, Z 0-82) -->
+  <g fill="#3d5c26">
+    <circle cx="55"  cy="55" r="8"/> <circle cx="145" cy="55" r="8"/> <circle cx="235" cy="55" r="8"/>
+    <circle cx="325" cy="55" r="8"/> <circle cx="415" cy="55" r="8"/> <circle cx="505" cy="55" r="8"/>
+    <circle cx="595" cy="55" r="8"/> <circle cx="685" cy="55" r="8"/> <circle cx="775" cy="55" r="8"/>
+    <circle cx="865" cy="55" r="8"/> <circle cx="925" cy="55" r="8"/>
+    <circle cx="55"  cy="770" r="8"/> <circle cx="145" cy="770" r="8"/> <circle cx="235" cy="770" r="8"/>
+    <circle cx="325" cy="770" r="8"/> <circle cx="925" cy="770" r="8"/>
+    <circle cx="55" cy="150" r="8"/> <circle cx="55" cy="240" r="8"/> <circle cx="55" cy="330" r="8"/>
+    <circle cx="55" cy="420" r="8"/> <circle cx="55" cy="510" r="8"/> <circle cx="55" cy="600" r="8"/> <circle cx="55" cy="690" r="8"/>
+    <circle cx="925" cy="150" r="8"/> <circle cx="925" cy="240" r="8"/> <circle cx="925" cy="330" r="8"/>
+    <circle cx="925" cy="420" r="8"/> <circle cx="925" cy="510" r="8"/> <circle cx="925" cy="600" r="8"/> <circle cx="925" cy="690" r="8"/>
+  </g>
+
+  <!-- Labels -->
+  <g fill="#fff" font-size="12" font-weight="bold" opacity="0.85">
+    <text x="490" y="30" text-anchor="middle">Broad asphalt road (100×16, Z=62-78) — Batch 21</text>
+    <text x="150" y="700" text-anchor="middle">LIVESTOCK WEST</text>
+    <text x="420" y="700" text-anchor="middle">SUPPLY (upgrade pads)</text>
+    <text x="700" y="700" text-anchor="middle">AGRICULTURE EAST</text>
+    <text x="490" y="418" text-anchor="middle" fill="#333">Processing Strip</text>
+    <text x="490" y="250" text-anchor="middle" fill="#333">Cashier / Central / Bakery-Café</text>
+    <text x="322" y="290" text-anchor="end" fill="#e94f4f" font-size="10">Striped gate + van parking (Batch 23)</text>
+  </g>
+</svg>

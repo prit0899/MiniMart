@@ -89,6 +89,23 @@ namespace MiniMart.Characters
         {
             RefreshUI();
 
+            // Cancelled-order fast path: if the order was dismissed / expired / fulfilled
+            // WHILE the van was still driving in, turn it around immediately from wherever
+            // it currently is. Previously we only checked this in the idle "else" branch,
+            // so a dismissed truck kept driving all the way to the pickup spot first,
+            // leaving the impression that the truck "didn't disappear."
+            if (!isDrivingOut && (Order == null || Order.IsExpired || Order.IsFulfilled || Order.IsDismissed))
+            {
+                isDrivingIn = false;
+                isDrivingOut = true;
+                // Preserve where we currently are along the drive-in path so the
+                // return-leg lerp starts from the van's real position, not from
+                // PickupSpot (which would visually teleport it forward first).
+                driveProgress = 0f;
+                returnStart = transform.position;
+                if (uiBubble != null) uiBubble.SetActive(false);
+            }
+
             if (isDrivingIn)
             {
                 driveProgress += Time.deltaTime * 0.5f;
@@ -103,21 +120,16 @@ namespace MiniMart.Characters
             else if (isDrivingOut)
             {
                 driveProgress += Time.deltaTime * 0.5f;
-                transform.position = Vector3.Lerp(PickupSpot.position, SpawnSpot.position, driveProgress);
-                transform.rotation = Quaternion.LookRotation(SpawnSpot.position - PickupSpot.position);
+                var from = returnStart == default ? PickupSpot.position : returnStart;
+                transform.position = Vector3.Lerp(from, SpawnSpot.position, driveProgress);
+                transform.rotation = Quaternion.LookRotation(SpawnSpot.position - from);
                 if (driveProgress >= 1f)
                 {
                     Destroy(gameObject);
                 }
             }
-            else
-            {
-                if (Order == null || Order.IsExpired || Order.IsFulfilled)
-                {
-                    isDrivingOut = true;
-                    if (uiBubble != null) uiBubble.SetActive(false);
-                }
-            }
         }
+
+        private Vector3 returnStart;
     }
 }

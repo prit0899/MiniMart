@@ -3,40 +3,57 @@ using UnityEngine;
 namespace MiniMart.Map
 {
     /// <summary>
-    /// Every named zone in the map. Assign GameObjects in the inspector; this enum keeps
-    /// code references stable even if the scene hierarchy changes.
-    /// Layout from the design doc (left->right, top->down):
-    ///   Entry door (top-left)
-    ///   Inner-left column  : EggStorage | CashCounter1 | TomatoZone | HenCoop
-    ///   Corridor / bins    : SecondaryExit | Bin | SecondaryExit
-    ///   Inner-right column : KetchupStorage | ShopFloor | WheatStorage | WheatFarm
-    ///   Corridor / bins    : SecondaryExit | Bin | SecondaryExit
-    ///   Right column       : BreadStorage | Oven
-    ///   Exit area          : CashCounter2 | ExitDoor
+    /// Every named zone in the map, matching the reference-image layout:
+    ///
+    ///   ┌─────────────────────── THE SUPERMARKET ZONE ───────────────────────┐
+    ///   │ Cashier Section │ Central Display Aisles │ Bakery & Café (Pink)    │
+    ///   │  (4 registers)  │ (Tomato/Egg/Canned/    │ (Bread/Cookie/Milk/     │
+    ///   │                 │  ProcessedCorn stands)  │  Coffee Dispenser)      │
+    ///   └─────────────────┴────────────────────────┴────────────────────────┘
+    ///   ════════════════════ PROCESSING AREA (road strip) ═══════════════════
+    ///   │ TomatoProcessor │  CornProcessor  │  EggMilkCookingStation        │
+    ///   ════════════════════════════════════════════════════════════════════
+    ///   ┌─────────────────── THE SUPPLY FARM (GRASS) ───────────────────────┐
+    ///   │ Livestock West  │ Upgrade Hub Center │ Agriculture East           │
+    ///   │ (Chickens/Cows) │ (Speed/Carry/Crop) │ (Tomato plots/Corn field) │
+    ///   └─────────────────┴────────────────────┴───────────────────────────┘
     /// </summary>
     public enum ZoneId
     {
+        // ── Supermarket Zone (top band, z ∈ [13.2, 22]) ──
+        CashierSection,           // x ∈ [ 2, 13]  — 4 cash registers
+        CentralDisplayAisles,     // x ∈ [13, 25]  — product stands & shelves
+        BakeryCafe,               // x ∈ [25, 34]  — pink floor: bread, cookie, milk, coffee
+
+        // ── Processing Area (middle strip, z ∈ [8, 12]) ──
+        ProcessingArea,           // Central factory + 3 machines
+        TomatoProcessorZone,      // Tomatoes → Canned Jars
+        CornProcessorZone,        // Corn → Processed Corn
+        EggMilkCookingZone,       // Eggs + Milk → Cookies
+
+        // ── Supply Farm (bottom band, z ∈ [0, 8]) ──
+        LivestockWest,            // Chicken coops + cow pasture
+        UpgradeHubCenter,         // Player speed / carry / crop upgrade pads
+        AgricultureEast,          // Tomato crop field + corn field
+
+        // ── Doors & Utility ──
         EntryDoor,
-        EggStorage,
+        ExitDoor,
+        Dustbin1,
+        Dustbin2,
+
+        // ── Legacy compatibility (kept so existing code doesn't break) ──
+        ShopFloor,
         CashCounter1Zone,
+        CashCounter2Zone,
+        CashCounter3Zone,
+        CashCounter4Zone,
         TomatoZone,
         HenCoopZone,
-        KetchupStorage,
-        ShopFloor,
-        WheatStorage,
         WheatFarmZone,
-        BreadStorage,
         OvenZone,
         MillZone,
         BlenderZone,
-        CashCounter2Zone,
-        ExitDoor,
-        SecondaryExit1,
-        SecondaryExit2,
-        SecondaryExit3,
-        SecondaryExit4,
-        Dustbin1,
-        Dustbin2,
     }
 
     [System.Serializable]
