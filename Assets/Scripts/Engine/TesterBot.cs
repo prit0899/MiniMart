@@ -33,9 +33,30 @@ namespace MiniMart.Engine
             try
             {
                 string scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                // Production-chain snapshot: with the eat-tomato hen, eggs (and so the
+                // stove and oven) starve if nobody feeds her — surface the whole chain
+                // in the STATUS line so a starvation stall is visible in the diary.
+                string chain = "";
+                var hen = FindAnyObjectByType<Production.HenCoop>();
+                if (hen != null) chain += $" hen[t{hen.TomatoQueued}/e{hen.EggReady}]";
+                foreach (var m in FindObjectsByType<Production.Machine>(FindObjectsSortMode.None))
+                {
+                    if (m.Type == Catalog.MachineType.Oven)
+                        chain += $" oven[{m.InputQueued}+{m.InputQueued2}->{m.OutputReady}]";
+                    else if (m.Type == Catalog.MachineType.Stove)
+                        chain += $" stove[{m.InputQueued}->{m.OutputReady}]";
+                    else if (m.Type == Catalog.MachineType.Mill)
+                        chain += $" mill[{m.InputQueued}->{m.OutputReady}]";
+                    else if (m.Type == Catalog.MachineType.Blender)
+                        chain += $" blend[{m.InputQueued}->{m.OutputReady}]";
+                }
+                var inv = gm.Inventory;
+                if (inv != null)
+                    chain += $" store[tom{inv.CountOf(Core.ItemType.Tomato)} egg{inv.CountOf(Core.ItemType.Egg)} whe{inv.CountOf(Core.ItemType.Wheat)} flr{inv.CountOf(Core.ItemType.WheatFlour)}]";
+
                 var lines = new List<string>(Log.Count + 1)
                 {
-                    $"STATUS L{gm.StoreLevel} ${gm.Economy.PlayerCash:F0} xp={gm.StoreXp}/{gm.XpToNextLevel} scene={scene} t={Time.timeSinceLevelLoad:F0}s real={Time.realtimeSinceStartup:F0}s"
+                    $"STATUS L{gm.StoreLevel} ${gm.Economy.PlayerCash:F0} xp={gm.StoreXp}/{gm.XpToNextLevel} scene={scene} t={Time.timeSinceLevelLoad:F0}s real={Time.realtimeSinceStartup:F0}s{chain}"
                 };
                 lines.AddRange(Log);
                 System.IO.File.WriteAllLines(DiaryPath, lines);

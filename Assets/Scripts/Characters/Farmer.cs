@@ -20,6 +20,7 @@ namespace MiniMart.Characters
         {
             Deciding,
             GoingToHenCoop,
+            FetchingTomatoForHen,
             GoingToWheatFarm,
             GoingToTomatoFarm,
             GoingToCowPen,
@@ -105,14 +106,30 @@ namespace MiniMart.Characters
             for (int i = 0; i < 5; i++)
             {
                 int pick = (farmCursor + i) % 5;
-                if (pick == 0 && FarmActive(henCoop) &&
-                    ((henCoop.TotalEggsReady() > 0 && HasStorageRoom(ItemType.Egg)) ||
-                     (henCoop.TomatoRoom > 0 && tomatoCount > 0)))
+                if (pick == 0 && FarmActive(henCoop))
                 {
-                    farmCursor = 1;
-                    fState = FarmerState.GoingToHenCoop;
-                    SetTarget(henCoop.transform.position);
-                    return true;
+                    bool eggsToCollect = henCoop.TotalEggsReady() > 0 && HasStorageRoom(ItemType.Egg);
+                    bool canFeedFromHand  = henCoop.TomatoRoom > 0 && tomatoCount > 0;
+                    bool canFeedFromStore = henCoop.TomatoRoom > 0 && tomatoCount == 0
+                                            && inventory.CountOf(ItemType.Tomato) > 0;
+                    if (eggsToCollect || canFeedFromHand)
+                    {
+                        farmCursor = 1;
+                        fState = FarmerState.GoingToHenCoop;
+                        SetTarget(henCoop.transform.position);
+                        return true;
+                    }
+                    if (canFeedFromStore)
+                    {
+                        // Deadlock fix (owner repro: hen[t0/e0] while store[tom15]):
+                        // the farmer banks every harvested tomato, so a carry-based
+                        // feed check never fires and the whole egg chain starves.
+                        // Two-leg trip like the shelver: rack -> withdraw -> coop.
+                        farmCursor = 1;
+                        fState = FarmerState.FetchingTomatoForHen;
+                        SetTarget(Engine.StorageRack.PositionOf(ItemType.Tomato, henCoop.transform.position));
+                        return true;
+                    }
                 }
                 if (pick == 1 && FarmActive(wheatFarm) && wheatFarm.ReadyCount() > 0 && HasStorageRoom(ItemType.Wheat))
                 {
@@ -169,6 +186,23 @@ namespace MiniMart.Characters
                     {
                         fState = FarmerState.GoingToDeposit;
                         SetTarget(DepositTarget());
+                    }
+                    break;
+
+                case FarmerState.FetchingTomatoForHen:
+                    {
+                        int want = Mathf.Min(room, henCoop != null ? henCoop.TomatoRoom : 0,
+                                             inventory.CountOf(ItemType.Tomato));
+                        if (want > 0 && inventory.Withdraw(ItemType.Tomato, want))
+                        {
+                            TryPickUpItem(want, ItemType.Tomato);
+                            fState = FarmerState.GoingToHenCoop;
+                            SetTarget(henCoop.transform.position);
+                        }
+                        else
+                        {
+                            fState = FarmerState.Deciding;
+                        }
                     }
                     break;
 
