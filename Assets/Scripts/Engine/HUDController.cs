@@ -117,10 +117,10 @@ namespace MiniMart.UI
 
         private static string UnlockTextFor(int level) => level switch
         {
-            2  => "Ketchup Blender available!\nTurn tomatoes into ketchup for more profit.",
-            3  => "Wheat Farm & Counter 2 available!\nWatch out — thieves start prowling from now on.",
-            4  => "Wheat Mill available — and you can hire a Chef!",
-            5  => "Bread Oven & Egg Stove available!\nBaked goods sell for top dollar.",
+            2  => "Counter 2 available!\nA second till keeps the queue moving.",
+            3  => "Wheat Farm available!\nWatch out — thieves start prowling from now on.",
+            4  => "Wheat Mill available — and you can hire a Chef!\nThe kitchen opens next level.",
+            5  => "The kitchen opens: Ketchup Blender, Egg Stove & Bread Oven!\nYour chef takes it from here.",
             6  => "THE MEGAMART OPENS!\nBuy the travel pad and visit your second store.",
             7  => "MegaMart grows: Milk Bottler, Apple Orchard & Cheese Dairy!",
             8  => "Corn Field & Corn Processor available in MegaMart!",

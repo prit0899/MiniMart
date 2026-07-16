@@ -31,6 +31,12 @@ namespace MiniMart.Characters
         private ShopShelf pendingShelf;
         private int pendingAmount;
 
+        /// <summary>Wired by the bootstrapper (Mart 1). Owner spec: the shelver also
+        /// "feeds tomato to hen" — it's a transfer job like any other.</summary>
+        public Production.HenCoop Hen;
+        private bool feedingHen;      // second leg of the hen trip (rack -> coop)
+        private int henCarry;         // tomatoes in hand for the hen
+
         /// <summary>Simple greedy loop: pick the emptiest assigned shelf, fetch from storage, restock it.</summary>
         public override void Tick(float dt)
         {
@@ -73,14 +79,67 @@ namespace MiniMart.Characters
                 pendingShelf = needsRestock;
                 fetching = true;
                 SetTarget(Engine.StorageRack.PositionOf(needsRestock.Item, needsRestock.transform.position));
+                return;
+            }
+
+            // Secondary task (owner spec): with no shelf to restock, keep the hen fed —
+            // fetch tomatoes from storage and carry them to the coop.
+            if (Hen != null && Hen.gameObject.activeInHierarchy && Hen.TomatoRoom > 0
+                && inventory.CountOf(ItemType.Tomato) > 0 && henCarry == 0)
+            {
+                feedingHen = false;   // first leg: go to the tomato rack
+                fetching = false;
+                pendingShelf = null;
+                henTrip = true;
+                SetTarget(Engine.StorageRack.PositionOf(ItemType.Tomato, Hen.transform.position));
             }
         }
+
+        private bool henTrip;
 
         private bool fetching;
 
         protected override void OnArrived()
         {
             base.OnArrived();
+
+            if (henTrip)
+            {
+                if (!feedingHen)
+                {
+                    // At the tomato rack: pick up what the hen can take.
+                    int want = Mathf.Min(CarryCapacity - CarryCount,
+                                         Hen != null ? Hen.TomatoRoom : 0,
+                                         inventory != null ? inventory.CountOf(ItemType.Tomato) : 0);
+                    if (want > 0 && inventory.Withdraw(ItemType.Tomato, want))
+                    {
+                        CarryColor = Engine.PrimitiveFactory.ItemColor(ItemType.Tomato);
+                        TryPickUp(want);
+                        henCarry = want;
+                        feedingHen = true;
+                        SetTarget(Hen.transform.position);
+                    }
+                    else
+                    {
+                        henTrip = false;
+                    }
+                }
+                else
+                {
+                    // At the coop: feed everything we brought.
+                    if (Hen != null && henCarry > 0)
+                    {
+                        int fed = Hen.LoadTomato(henCarry);
+                        CarryCount = Mathf.Max(0, CarryCount - henCarry);
+                        // Anything the hen couldn't take goes back to storage.
+                        if (henCarry - fed > 0) inventory?.Deposit(ItemType.Tomato, henCarry - fed);
+                    }
+                    henCarry = 0;
+                    feedingHen = false;
+                    henTrip = false;
+                }
+                return;
+            }
 
             if (fetching && pendingShelf != null)
             {
@@ -123,7 +182,9 @@ namespace MiniMart.Characters
         public override List<ItemType> GetCarriedItems()
         {
             var list = new List<ItemType>();
-            if (pendingShelf != null)
+            if (henCarry > 0)
+                for (int i = 0; i < henCarry; i++) list.Add(ItemType.Tomato);
+            else if (pendingShelf != null)
                 for (int i = 0; i < CarryCount; i++) list.Add(pendingShelf.Item);
             return list;
         }

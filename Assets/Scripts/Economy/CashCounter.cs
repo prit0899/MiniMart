@@ -21,8 +21,8 @@ namespace MiniMart.Economy
         public bool IsOpen => IsUnlocked && (HasCashier || ManualOverride);
         public bool ManualOverride; // true while the player is physically running the till
 
-        /// <summary>GDD 4: seconds per checkout; the player manning the till works 3x faster.</summary>
-        public float SecondsPerCheckout = 1.2f;
+        /// <summary>GDD 4: seconds per checkout; the player manning the till works 2x faster.</summary>
+        public float SecondsPerCheckout = 2.0f;
         private float sinceLastCheckout;
 
         private Characters.Cashier cashierVisual;
@@ -86,14 +86,15 @@ namespace MiniMart.Economy
             sinceLastCheckout += dt;
             if (Line.Count == 0 || !IsOpen) return 0f;
 
-            // Player at the till = 3x checkout speed (GDD 4 "manual checkout override").
-            float needed = ManualOverride ? SecondsPerCheckout / 3f : SecondsPerCheckout;
+            // Player at the till = 2x checkout speed (GDD 4 "manual checkout override").
+            float needed = ManualOverride ? SecondsPerCheckout / 2f : SecondsPerCheckout;
             if (sinceLastCheckout < needed) return 0f;
             sinceLastCheckout = 0f;
 
             var buyer = Line[0];
-            Line.RemoveAt(0);
             if (buyer == null) return 0f;
+            if (!buyer.IsReadyForCheckout(this)) return 0f;
+            Line.RemoveAt(0);
 
             // Charge for what the buyer actually took off the shelves. Basket is the
             // REMAINING wish-list (it empties as they shop), so quoting it charged
@@ -113,6 +114,10 @@ namespace MiniMart.Economy
             {
                 Engine.Emote.Happy(buyer.transform.position);
                 if (tipped) Engine.Emote.Heart(buyer.transform.position + new Vector3(0.4f, 0.3f, 0));
+
+                // Floating text showing cash charged to make transaction flow obvious
+                Engine.Emote.Spawn(transform.position + Vector3.up * 1.5f, $"+${total:F0}", new Color(0.15f, 0.6f, 0.15f));
+
                 Engine.AudioFx.Sale();
             }
 

@@ -27,8 +27,19 @@ namespace MiniMart.AI
         private ShopShelf currentTarget;
         private bool fleeing;
 
+        private readonly Dictionary<ItemType, int> stolenItems = new Dictionary<ItemType, int>();
+
+        public override List<ItemType> GetCarriedItems()
+        {
+            var list = new List<ItemType>();
+            foreach (var kv in stolenItems)
+                for (int i = 0; i < kv.Value; i++) list.Add(kv.Key);
+            return list;
+        }
+
         protected override void Awake()
         {
+            base.Awake();
             Role = RoleType.Thief;
             Curve = null;
             baseSpeed = 2.2f;      // faster than workers/buyers, but still beatable by the player
@@ -42,6 +53,7 @@ namespace MiniMart.AI
             IsCaught = false;
             fleeing = false;
             stolenItemCount = 0;
+            stolenItems.Clear();
             State = CharacterState.Walking;
             PickNextTarget();
         }
@@ -77,17 +89,33 @@ namespace MiniMart.AI
             {
                 HasLeftStore = true;
                 State = CharacterState.Fleeing;
-                // The thief has escaped; the event is over — TheftManager will clean this up.
+                // Log the loss details
+                float lostValue = 0f;
+                foreach (var kv in stolenItems)
+                {
+                    lostValue += PriceCatalog.BasePrice.TryGetValue(kv.Key, out var bp) ? bp * kv.Value : 2f * kv.Value;
+                }
+                Debug.Log($"[Thief] Escaped with {stolenItemCount} items worth ${lostValue:F0}!");
+                // The thief has escaped; the event is over. Destroy the GameObject.
+                Destroy(gameObject);
                 return;
             }
 
             if (currentTarget != null && currentTarget.Count > 0)
             {
                 int steal = Mathf.Min(2, currentTarget.Count, CarryCapacity - CarryCount);
+                ItemType item = currentTarget.Item;
                 if (currentTarget.TakeStock(steal))
                 {
                     CarryCount += steal;
                     stolenItemCount += steal;
+
+                    if (!stolenItems.ContainsKey(item)) stolenItems[item] = 0;
+                    stolenItems[item] += steal;
+                    CarryColor = Engine.PrimitiveFactory.ItemColor(item);
+
+                    // Exclamation emote to show stealing activity
+                    Engine.Emote.Spawn(transform.position + Vector3.up * 1.5f, "!", Color.red);
                 }
             }
             PickNextTarget();
@@ -98,6 +126,8 @@ namespace MiniMart.AI
             if (ExitWaypoint == null) { HasLeftStore = true; return; }
             fleeing = true;
             State = CharacterState.Fleeing;
+            // Angry emote when fleeing starts
+            Engine.Emote.Angry(transform.position);
             SetTarget(ExitWaypoint.position);
         }
 
@@ -107,7 +137,20 @@ namespace MiniMart.AI
             IsCaught = true;
             HasLeftStore = false;
             State = CharacterState.Idle;
-            Debug.Log($"Thief caught! Had stolen {stolenItemCount} items.");
+
+            // Return all stolen items to inventory
+            if (Inventory != null)
+            {
+                foreach (var kv in stolenItems)
+                {
+                    Inventory.Deposit(kv.Key, kv.Value);
+                }
+            }
+
+            Debug.Log($"Thief caught! Returned {stolenItemCount} stolen items to inventory.");
+
+            // Happy emote to celebrate catching the thief
+            Engine.Emote.Happy(transform.position);
             Destroy(gameObject, 1f);
         }
     }
@@ -169,11 +212,13 @@ namespace MiniMart.AI
                 go.transform.position = SpawnPoint.position;
                 go.AddComponent<Thief>();
                 go.AddComponent<Engine.WobbleAnimator>();
+                go.AddComponent<MiniMart.UI.CarryVisual>();
                 // Dark hooded look so the player can spot the shoplifter in the crowd.
                 Engine.PrimitiveFactory.BuildCharacter(go, new Color(0.22f, 0.22f, 0.28f));
             }
             var thief = go.GetComponent<Thief>();
             if (thief == null) { activeTheft = false; return; }
+            if (go.GetComponent<MiniMart.UI.CarryVisual>() == null) go.AddComponent<MiniMart.UI.CarryVisual>();
             thief.TargetShelves = AllShelves;
             thief.ExitWaypoint = ExitWaypoint;
             thief.Inventory = Inventory;

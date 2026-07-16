@@ -54,6 +54,20 @@ namespace MiniMart.Engine
                 if (inv != null)
                     chain += $" store[tom{inv.CountOf(Core.ItemType.Tomato)} egg{inv.CountOf(Core.ItemType.Egg)} whe{inv.CountOf(Core.ItemType.Wheat)} flr{inv.CountOf(Core.ItemType.WheatFlour)}]";
 
+                // Where is everyone / is money reaching the floor? (Static-world
+                // stalls need position evidence, not just economy counters.)
+                if (player != null)
+                {
+                    Vector3 pp = player.transform.position;
+                    chain += $" bot({pp.x:F0},{pp.z:F0})carry{player.CarryCount}";
+                }
+                chain += $" cash$={FindObjectsByType<MoneyStack>(FindObjectsSortMode.None).Length}";
+                chain += $" buyers={FindObjectsByType<MiniMart.AI.Buyer>(FindObjectsSortMode.None).Length}";
+                string shelves = "";
+                foreach (var sh in FindObjectsByType<ShopShelf>(FindObjectsSortMode.None))
+                    if (sh.gameObject.activeInHierarchy) shelves += $"{sh.Item.ToString().Substring(0, 3)}{sh.Count} ";
+                chain += $" shelf[{shelves.TrimEnd()}]";
+
                 var lines = new List<string>(Log.Count + 1)
                 {
                     $"STATUS L{gm.StoreLevel} ${gm.Economy.PlayerCash:F0} xp={gm.StoreXp}/{gm.XpToNextLevel} scene={scene} t={Time.timeSinceLevelLoad:F0}s real={Time.realtimeSinceStartup:F0}s{chain}"
@@ -106,6 +120,13 @@ namespace MiniMart.Engine
                 nextFlushAt = Time.unscaledTime + 5f;
                 FlushDiary(gm);
             }
+            CheckWedged();
+
+            // Thief visibility for the QA report: note spawns and outcomes.
+            int thievesNow = FindObjectsByType<MiniMart.AI.Thief>(FindObjectsSortMode.None).Length;
+            if (thievesNow > lastThieves) Note($"THIEF spawned (active={thievesNow})");
+            else if (thievesNow < lastThieves) Note($"THIEF gone (caught or escaped; active={thievesNow})");
+            lastThieves = thievesNow;
 
             // Milestones + stall detection.
             if (gm.StoreLevel != lastLevel)
@@ -242,6 +263,29 @@ namespace MiniMart.Engine
         {
             // Leaving play mode must never strand the editor at 3x.
             Time.timeScale = 1f;
+        }
+
+        private int lastThieves;
+        private Vector3 lastPos;
+        private float lastMoveAt;
+
+        /// <summary>Physically-stuck detector: we have somewhere to be but haven't
+        /// moved half a unit in 45s. Logs once per wedge window with coordinates.</summary>
+        private void CheckWedged()
+        {
+            if (player == null) return;
+            Vector3 pp = player.transform.position;
+            if ((pp - lastPos).sqrMagnitude > 0.25f)
+            {
+                lastPos = pp;
+                lastMoveAt = Time.timeSinceLevelLoad;
+                return;
+            }
+            if (player.HasMoveTarget && Time.timeSinceLevelLoad - lastMoveAt > 45f)
+            {
+                Note($"BOT_WEDGED at ({pp.x:F1},{pp.z:F1}) carry={player.CarryCount} — has target but no movement 45s");
+                lastMoveAt = Time.timeSinceLevelLoad;
+            }
         }
 
         private void Go(Vector3 pos) => player.SetTarget(pos);

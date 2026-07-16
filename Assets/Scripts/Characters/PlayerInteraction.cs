@@ -48,6 +48,7 @@ namespace MiniMart.Characters
         private readonly Dictionary<ItemType, int> carried = new Dictionary<ItemType, int>();
         private float timer;
         private float binDwell; // time spent standing at a dustbin (prevents walk-by dumps)
+        private float rackDwell; // time spent standing at a rack (prevents walk-by pickup)
 
         /// <summary>Exact per-item carried list for mixed-stack visuals. Not an override —
         /// PlayerInteraction is a sibling MonoBehaviour, not a CharacterBase; CarryVisual
@@ -82,11 +83,16 @@ namespace MiniMart.Characters
             //    no shelver was hired yet — the store made no sales and it looked
             //    like the player "couldn't carry anything". Overflow on deposit is
             //    already handled by the bin, so plain carry-room gating is safe.)
+            // 0) FEED the hen — outside the carry-room gate. Feeding EMPTIES the
+            //    player's hands, so it must work precisely when the carry is full
+            //    of tomatoes (owner repro: full tomato stack, standing at the coop,
+            //    nothing happened because this used to sit inside `room > 0`).
+            if (Near(henCoop, Radius) && CarriedCount(ItemType.Tomato) > 0 && henCoop.TomatoRoom > 0)
+            { henCoop.LoadTomato(1); Consume(ItemType.Tomato, 1); return; }
+
             if (room > 0)
             {
-                // Hen now EATS tomatoes and lays eggs: feed a carried tomato, or collect a laid egg.
-                if (Near(henCoop, Radius) && CarriedCount(ItemType.Tomato) > 0 && henCoop.TomatoRoom > 0)
-                { henCoop.LoadTomato(1); Consume(ItemType.Tomato, 1); return; }
+                // Collect laid eggs (this one genuinely needs carry room).
                 if (Near(henCoop, Radius) && henCoop.TotalEggsReady() > 0)
                 { Pick(ItemType.Egg, henCoop.Collect(1)); return; }
                 if (Near(tomatoFarm, Radius) && tomatoFarm.TotalRipe() > 0)
@@ -151,6 +157,33 @@ namespace MiniMart.Characters
                 }
                 if (!atBin) binDwell = 0f;
                 if (atBin && binDwell >= 0.9f) return;
+            }
+
+            // 2c) WITHDRAW from storage racks (owner: "main player can not take
+            //     anything from storage near farms"). Stand briefly at a rack while
+            //     carrying NONE of its item and with free hands-room, and the player
+            //     pulls stock back out — one per beat after a short dwell, so merely
+            //     walking past a rack doesn't vacuum it up. Carrying that item at
+            //     the rack still means DEPOSIT (section 2 above), so the two can't fight.
+            {
+                bool atRack = false;
+                if (room > 0)
+                {
+                    foreach (ItemType it in System.Enum.GetValues(typeof(ItemType)))
+                    {
+                        var rack = Engine.StorageRack.Get(it);
+                        if (rack == null || !rack.gameObject.activeInHierarchy) continue;
+                        if (Vector3.Distance(transform.position, rack.transform.position) >= DepotRadius) continue;
+                        atRack = true;
+                        if (CarriedCount(it) > 0) continue;      // deposit case, handled above
+                        if (inv.CountOf(it) <= 0) continue;
+                        rackDwell += ActionInterval;
+                        if (rackDwell < 0.6f) break;             // must linger before pulling
+                        if (inv.Withdraw(it, 1)) { Pick(it, 1); return; }
+                        break;
+                    }
+                }
+                if (!atRack) rackDwell = 0f;
             }
 
             // 3) Machines: load carried inputs, collect finished outputs.

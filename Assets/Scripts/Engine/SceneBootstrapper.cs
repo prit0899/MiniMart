@@ -503,6 +503,7 @@ namespace MiniMart
             var shelver1Comp = shelver1GO.GetComponent<Shelver>() ?? shelver1GO.AddComponent<Shelver>();
             shelver1Comp.AssignedShelves = shelvesList.FindAll(s =>
                 RoleCatalog.RoleResponsibilities[Core.RoleType.Shelver1].Contains(s.Item)).ToArray();
+            shelver1Comp.Hen = henCoopComp;   // owner spec: shelver also feeds the hen
             if (shelver1GO.GetComponent<WobbleAnimator>() == null) shelver1GO.AddComponent<WobbleAnimator>();
             if (shelver1GO.GetComponent<UI.CarryVisual>() == null) shelver1GO.AddComponent<UI.CarryVisual>();
             PrimitiveFactory.BuildCharacter(shelver1GO, new Color(0.92f, 0.3f, 0.55f),
@@ -649,14 +650,17 @@ namespace MiniMart
                 Gate(25f,  1, "Hen Coop",       henCoopGO, ShelfOf(Core.ItemType.Egg)?.gameObject, rackEgg.gameObject);
                 Gate(40f,  1, "Hire Shelver",   shelver1GO);
 
-                Gate(75f,  2, "Ketchup Blender", blenderGO, ShelfOf(Core.ItemType.TomatoKetchup)?.gameObject, rackKetchup.gameObject);
+                // Owner rule: every cooking machine unlocks AFTER the chef exists
+                // (chef hires at L4, kitchen opens at L5) and never more than 3
+                // unlocks per level.
+                Gate(300f, 2, "Counter 2",      cc2GO);
 
                 Gate(50f,  3, "Wheat Farm",     wheatFarmGO, ShelfOf(Core.ItemType.Wheat)?.gameObject, rackWheat.gameObject);
-                Gate(300f, 3, "Counter 2",      cc2GO);
 
                 Gate(125f, 4, "Wheat Mill",     millGO, ShelfOf(Core.ItemType.WheatFlour)?.gameObject, rackFlour.gameObject);
                 Gate(150f, 4, "Hire Chef",      chefGO);
 
+                Gate(75f,  5, "Ketchup Blender", blenderGO, ShelfOf(Core.ItemType.TomatoKetchup)?.gameObject, rackKetchup.gameObject);
                 Gate(200f, 5, "Bread Oven",     ovenGO, ShelfOf(Core.ItemType.Bread)?.gameObject, rackBread.gameObject);
                 Gate(110f, 5, "Egg Stove",      stoveGO, ShelfOf(Core.ItemType.FriedEgg)?.gameObject, rackFried.gameObject);
 

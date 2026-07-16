@@ -186,13 +186,15 @@ namespace MiniMart.AI
             if (waitingForCounter)
             {
                 queueWait += dt;
-                var open = FindUnlockedCounter();
+                var open = FindOpenCounter();
                 if (open != null)
                 {
                     waitingForCounter = false;
                     open.Enqueue(this);
                     queuedCounter = open;
                     queueWait = 0f;
+                    int idx = open.Line.IndexOf(this);
+                    if (idx >= 0) SetTarget(open.GetQueueSlot(idx));
                 }
                 else if (queueWait >= queuePatienceSeconds)
                 {
@@ -323,8 +325,8 @@ namespace MiniMart.AI
                     return;
                 }
 
-                // Head to nearest open counter with what we collected.
-                var counter = FindUnlockedCounter();
+                // Head to the shortest counter that can actually process the line now.
+                var counter = FindOpenCounter();
                 if (counter != null)
                 {
                     headingToCounter = true;
@@ -429,11 +431,11 @@ namespace MiniMart.AI
             return best;
         }
 
-        private Economy.CashCounter FindUnlockedCounter()
+        private Economy.CashCounter FindOpenCounter()
         {
             Economy.CashCounter best = null;
             foreach (var c in counters)
-                if (c != null && c.gameObject.activeInHierarchy && c.IsUnlocked && (best == null || c.Line.Count < best.Line.Count)) best = c;
+                if (c != null && c.gameObject.activeInHierarchy && c.IsOpen && (best == null || c.Line.Count < best.Line.Count)) best = c;
             return best;
         }
 
@@ -442,6 +444,14 @@ namespace MiniMart.AI
             $"hasTarget={hasTarget} wp={(pathWaypoints == null ? -1 : pathWaypoints.Count)}/{currentWaypointIndex} " +
             $"picking={(pickingShelf != null)} queued={(queuedCounter != null)} waiting={waitingForCounter} " +
             $"heading={headingToCounter} leaving={leaving} state={State}";
+
+        public bool IsReadyForCheckout(Economy.CashCounter counter)
+        {
+            if (counter == null || queuedCounter != counter || leaving || HasCheckedOut) return false;
+            Vector3 a = transform.position; a.y = 0f;
+            Vector3 b = counter.GetQueueSlot(0); b.y = 0f;
+            return (a - b).sqrMagnitude <= 0.7f * 0.7f;
+        }
 
         private void LeaveWithoutPaying(string reason)
         {

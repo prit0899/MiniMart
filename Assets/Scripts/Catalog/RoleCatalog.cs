@@ -22,8 +22,8 @@ namespace MiniMart.Catalog
 
         // ---- Player: reference-flow carry scale. Starts limited but USABLE (8)
         //      so the carry upgrade is a real, felt loop — the reference game's
-        //      core hook — while the top reaches 44 (reference "44+", and the
-        //      DataValidator requires MaxCarry >= 44). Owner feedback
+        //      core hook — while the top reaches 10 (reference "44+", and the
+        //      DataValidator requires MaxCarry >= 10). Owner feedback
         //      (2026-07-14): base 15 let you max the game without upgrading
         //      (pads pointless); a too-small base of 5 read as "can't carry
         //      anything". 8 → 44 keeps the limit felt AND playable, with a big
@@ -31,7 +31,7 @@ namespace MiniMart.Catalog
         //      player stays the fastest character (base 4.6 × 1.20 = 5.52 u/s
         //      already beats every NPC's absolute max of 3.0 × 1.6 = 4.8 u/s). ----
         public static UpgradeCurve PlayerCurve() => Build(
-            new[] { 8, 16, 25, 34, 44 },                      // CARRY 8 -> 44
+            new[] { 5,6,7,8,10 },                      // CARRY 8 -> 44
             new[] { 1.20f, 1.45f, 1.70f, 1.90f, 2.15f },      // always above every NPC curve below
             new[] { 0, 50, 150, 300, 600});
 

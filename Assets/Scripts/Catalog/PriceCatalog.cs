@@ -55,11 +55,11 @@ namespace MiniMart.Catalog
             // ── Mart 1 "Mini Mart" (L1-5) ──
             { ItemType.Tomato, 1 },           // starter shelf
             { ItemType.Egg, 1 },              // L1: Hen Coop pad
-            { ItemType.TomatoKetchup, 2 },    // L2: Ketchup Blender pad
+            { ItemType.TomatoKetchup, 5 },    // L5: Ketchup Blender pad (kitchen after chef)
             { ItemType.Wheat, 3 },            // L3: Wheat Farm pad
             { ItemType.WheatFlour, 4 },       // L4: Wheat Mill pad
-            { ItemType.Bread, 5 },            // L5: Bread Oven pad
-            { ItemType.FriedEgg, 5 },         // L5: Egg Stove pad
+            { ItemType.Bread, 5 },            // L5: Bread Oven pad (kitchen after chef)
+            { ItemType.FriedEgg, 5 },         // L5: Egg Stove pad (kitchen after chef)
 
             // ── Mart 2 "MegaMart" (L6-10, SceneBootstrapper2 ladder) ──
             { ItemType.Milk, 6 },             // L6: Cow Pen pad
@@ -94,7 +94,7 @@ namespace MiniMart.Catalog
         public const int Cashier1AssignableLevel = 1;
         // Batch 39 reconcile: the Counter 2 pad sells at L3 (queue-overflow fix,
         // batch 35) — this constant MUST match or the bought counter stays closed.
-        public const int CashCounter2UnlockLevel = 3;
+        public const int CashCounter2UnlockLevel = 2;
         public const int CashCounter3UnlockLevel = 6;  // Mart 2's only till until L10 - open on arrival
         public const int CashCounter4UnlockLevel = 10;  // Mart 2 endgame
 

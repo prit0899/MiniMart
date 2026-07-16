@@ -155,6 +155,9 @@ namespace MiniMart.Characters
         private Vector3 RackPos(ItemType item) =>
             Engine.StorageRack.PositionOf(item, new Vector3(5f, 0f, 10f));
 
+        private bool MachineActive(Machine machine) =>
+            machine != null && machine.gameObject.activeInHierarchy;
+
         /// <summary>Rack of the primary output we're carrying (racks sit by their sources).</summary>
         private Vector3 DepositPos()
         {
@@ -187,32 +190,32 @@ namespace MiniMart.Characters
                     // Priority 1: Collect finished outputs if we have carry space
                     if (room > 0)
                     {
-                        if (blender != null && blender.OutputReady > 0)
+                        if (MachineActive(blender) && blender.OutputReady > 0)
                         {
                             cState = ChefState.GoingToBlenderToCollect;
                             SetTarget(blender.transform.position);
                             return;
                         }
-                        else if (mill != null && mill.OutputReady > 0)
+                        else if (MachineActive(mill) && mill.OutputReady > 0)
                         {
                             cState = ChefState.GoingToMillToCollect;
                             SetTarget(mill.transform.position);
                             return;
                         }
-                        else if (oven != null && oven.OutputReady > 0)
+                        else if (MachineActive(oven) && oven.OutputReady > 0)
                         {
                             cState = ChefState.GoingToOvenToCollect;
                             SetTarget(oven.transform.position);
                             return;
                         }
                         // Bug #4: collect stove and leaf processor outputs
-                        else if (stove != null && stove.OutputReady > 0)
+                        else if (MachineActive(stove) && stove.OutputReady > 0)
                         {
                             cState = ChefState.GoingToStoveToCollect;
                             SetTarget(stove.transform.position);
                             return;
                         }
-                        else if (leafProcessor != null && leafProcessor.OutputReady > 0)
+                        else if (MachineActive(leafProcessor) && leafProcessor.OutputReady > 0)
                         {
                             cState = ChefState.GoingToLeafToCollect;
                             SetTarget(leafProcessor.transform.position);
@@ -232,49 +235,53 @@ namespace MiniMart.Characters
                     if (room > 0)
                     {
                         // Check Oven (Bread): Needs 1 WheatFlour + 1 Egg
-                        if (oven != null && oven.InputQueued < oven.StackCapacity && inventory.CountOf(ItemType.WheatFlour) >= 1 && inventory.CountOf(ItemType.Egg) >= 1)
+                        if (MachineActive(oven) &&
+                            oven.InputQueued < oven.InputCapacity &&
+                            oven.InputQueued2 < oven.InputCapacity &&
+                            inventory.CountOf(ItemType.WheatFlour) >= 1 &&
+                            inventory.CountOf(ItemType.Egg) >= 1)
                         {
                             cState = ChefState.GoingToWithdrawOvenIngredients;
                             SetTarget(RackPos(ItemType.WheatFlour));
                             return;
                         }
                         // Check Mill (Flour): Needs 1 Wheat
-                        else if (mill != null && mill.InputQueued < mill.StackCapacity && inventory.CountOf(ItemType.Wheat) >= 1)
+                        else if (MachineActive(mill) && mill.InputQueued < mill.StackCapacity && inventory.CountOf(ItemType.Wheat) >= 1)
                         {
                             cState = ChefState.GoingToWithdrawWheat;
                             SetTarget(RackPos(ItemType.Wheat));
                             return;
                         }
                         // Check Blender (Ketchup): Needs 1 Tomato
-                        else if (blender != null && blender.InputQueued < blender.StackCapacity && inventory.CountOf(ItemType.Tomato) >= 1)
+                        else if (MachineActive(blender) && blender.InputQueued < blender.StackCapacity && inventory.CountOf(ItemType.Tomato) >= 1)
                         {
                             cState = ChefState.GoingToWithdrawTomato;
                             SetTarget(RackPos(ItemType.Tomato));
                             return;
                         }
                         // Bug #4: Check Stove (FriedEgg): Needs 1 Egg
-                        else if (stove != null && stove.InputQueued < stove.StackCapacity && inventory.CountOf(ItemType.Egg) >= 1)
+                        else if (MachineActive(stove) && stove.InputQueued < stove.StackCapacity && inventory.CountOf(ItemType.Egg) >= 1)
                         {
                             cState = ChefState.GoingToWithdrawEggForStove;
                             SetTarget(RackPos(ItemType.Egg));
                             return;
                         }
                         // Bug #4: Check LeafProcessor (HerbPack): Needs 1 Herb
-                        else if (leafProcessor != null && leafProcessor.InputQueued < leafProcessor.StackCapacity && inventory.CountOf(ItemType.Herb) >= 1)
+                        else if (MachineActive(leafProcessor) && leafProcessor.InputQueued < leafProcessor.StackCapacity && inventory.CountOf(ItemType.Herb) >= 1)
                         {
                             cState = ChefState.GoingToWithdrawHerbForLeaf;
                             SetTarget(RackPos(ItemType.Herb));
                             return;
                         }
                         // Self-fetch from farms when storage is empty
-                        else if (blender != null && blender.InputQueued < blender.StackCapacity
+                        else if (MachineActive(blender) && blender.InputQueued < blender.StackCapacity
                                  && tomatoFarm != null && tomatoFarm.TotalRipe() > 0)
                         {
                             cState = ChefState.GoingToSelfFetchTomato;
                             SetTarget(tomatoFarm.transform.position);
                             return;
                         }
-                        else if (mill != null && mill.InputQueued < mill.StackCapacity
+                        else if (MachineActive(mill) && mill.InputQueued < mill.StackCapacity
                                  && wheatFarm != null && wheatFarm.ReadyCount() > 0)
                         {
                             cState = ChefState.GoingToSelfFetchWheat;
@@ -284,17 +291,20 @@ namespace MiniMart.Characters
                     }
 
                     // Fallbacks
-                    if (tomatoCount > 0 && blender != null && blender.InputQueued < blender.StackCapacity)
+                    if (tomatoCount > 0 && MachineActive(blender) && blender.InputQueued < blender.StackCapacity)
                     {
                         cState = ChefState.GoingToBlenderToLoad;
                         SetTarget(blender.transform.position);
                     }
-                    else if (wheatCount > 0 && mill != null && mill.InputQueued < mill.StackCapacity)
+                    else if (wheatCount > 0 && MachineActive(mill) && mill.InputQueued < mill.StackCapacity)
                     {
                         cState = ChefState.GoingToMillToLoad;
                         SetTarget(mill.transform.position);
                     }
-                    else if (flourCount > 0 && eggCount > 0 && oven != null && oven.InputQueued < oven.StackCapacity)
+                    else if (flourCount > 0 && eggCount > 0 &&
+                             MachineActive(oven) &&
+                             oven.InputQueued < oven.InputCapacity &&
+                             oven.InputQueued2 < oven.InputCapacity)
                     {
                         cState = ChefState.GoingToOvenToLoad;
                         SetTarget(oven.transform.position);
@@ -363,7 +373,8 @@ namespace MiniMart.Characters
                 case ChefState.GoingToWithdrawOvenIngredients:
                     {
                         int limitByRoom = room / 2;
-                        int limitByOven = (oven.StackCapacity - oven.InputQueued);
+                        int limitByOven = Mathf.Min(oven.InputCapacity - oven.InputQueued,
+                                                    oven.InputCapacity - oven.InputQueued2);
                         int amount = Mathf.Min(limitByRoom, limitByOven, inventory.CountOf(ItemType.WheatFlour), inventory.CountOf(ItemType.Egg));
                         if (amount > 0 && inventory.Withdraw(ItemType.WheatFlour, amount) && inventory.Withdraw(ItemType.Egg, amount))
                         {
