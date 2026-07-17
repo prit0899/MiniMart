@@ -43,17 +43,38 @@ MegaMart one starter income source.
 limit) and `Engine/DataValidator.cs`. Leave them alone — they're intentional and
 the validator is green with them.
 
-**Next most valuable work** (in order):
-1. Play the game and check the new worker movement *feels* right. Tuning knobs are
-   all in `CharacterBase`: `maxForce` (momentum), `turnSpeed`, `SeparationWeight`,
-   `AvoidWeight`.
-2. Phase 6 onboarding: first-session spotlight path (dim world → highlight tomato
-   farm → shelf → counter). Top open item from real reviewer feedback.
-3. Device (real iPhone) test pass — never done yet.
-4. ~~Gameplay capture for the README~~ ✅ Done 2026-07-17 — `Docs/images/gameplay.gif`
-   (80 frames, 3× speed). Reusable rig: `touch Logs/gifcapture.marker` + autoplay;
-   `GifCaptureSession` dismisses the offline popup, saves frames to `Logs/frames/`,
-   auto-stops; assemble with PIL (scratchpad `make_gif.py` pattern).
+**Reference-parity audit (2026-07-17)** — went feature-by-feature against
+`Refer/` screenshots + PRD §5.1. **Every enumerable reference feature is present
+and verified in code:**
+- Two stores, all production chains (Mart 1: Tomato→Ketchup, Wheat→Flour→Bread,
+  Egg→FriedEgg; MegaMart: Corn→ProcessedCorn, Milk→BottledMilk, Milk→Cheese,
+  Herb→HerbPack, Coffee auto-produced). **MegaMart stations already run the split
+  4→6→8 two-track model** (`ConfigStation` in SB2) — the earlier "flag off" note
+  was stale. Coffee is a deliberate auto-producer (no input); the Cow milks on a
+  growth timer with a **HayFeedTrough** wheat-boost (parity-adjacent to the hen).
+- **Consolidated Upgrades menu** (`UpgradePanelController`): green shell, three
+  tabs Workers/Machines/Animals, Stack+Speed rows per entity, green cost pills,
+  "Maxed" badges, scroll for overflow — matches the reference screenshot exactly.
+- Purchase pads, meaningful player upgrades, all worker types with real carry
+  meshes, customers + thieves + honest checkout queue, **phone orders**
+  (`DeliveryVan` + `PhoneOrderManager`), onboarding + spotlight, save/load +
+  offline earnings, gameplay GIF shipped (`Docs/images/gameplay.gif`, `6d1304d`).
+- Engineering standards asked for: NavMesh (greedy maximal-rectangle convex
+  decomposition) + A\* + funnel string-pull + Reynolds steering; marker-driven QA
+  harness; `DataValidator` **42,710 assertions green** (verified this session).
+
+**The ONLY remaining parity item is a real-iPhone device test pass** — it needs
+physical hardware, so it is genuinely owner-blocked, not a code gap.
+
+**Two things I got wrong last session and corrected here:** I reported the
+MegaMart station economy and the gameplay video as "blocked on owner" without
+reading the code — both were already done. Lesson: read before declaring blocked.
+
+**Optional polish still open (not parity-blocking):**
+1. Worker-movement *feel* tuning — knobs in `CharacterBase` (`maxForce`,
+   `turnSpeed`, `SeparationWeight`, `AvoidWeight`). Needs a human eye, not a bot.
+2. Owner design call on MegaMart arrival: travelling with only the $500 fare
+   strands you broke there. Warn before travel, or give MegaMart a starter income.
 
 ---
 
@@ -93,6 +114,8 @@ the validator is green with them.
 | 24 | **2026-07-15 Codex follow-up after owner challenged the shallow verification** | The previous pass was not enough: it did not change the scripts behind the visible bugs. Real issues remained: the thief tracked stolen SKUs internally but had no carry-stack override/visual, buyers entered checkout lines before reaching the counter and could be charged while still walking, buyers could choose unlocked-but-closed counters, and Chef logic could target inactive machines hidden behind purchase pads. | ✅ Fixed in code — `Thief` now exposes stolen SKUs through `GetCarriedItems()` and always gets a `CarryVisual`; `Buyer` now joins only open counters and walks to the slot when a counter opens; `CashCounter` only charges the front buyer after the buyer physically reaches the front queue slot; `Chef` now requires active purchased machines before collecting/loading/targeting, and oven checks both flour and egg input capacity. |
 
 | 25 | **QA: MegaMart certification run (2026-07-17)** — first attempt stranded the bot at Counter 3 in MegaMart with $9, no pads bought, no income, forever | THREE TesterBot gaps, none of them game bugs: (a) bot travelled the moment it had the $60-era threshold — arriving broke in a mart with zero income sources; (b) bot had no rule to ride the "Return to MiniMart" pad home; (c) the stall detector went blind after every scene load (`lastProgressAt` kept the OLD scene's `timeSinceLevelLoad`, which resets per scene → negative diff, stalls never fired). | ✅ Fixed & validated in one live run: bot now banks **$660 before travelling** (fare + seed), returns home when broke in MegaMart with nothing carried, and resets its progress clock on scene reattach. Run evidence: L10 reached, travel with seed → six MegaMart pads/shelves live (`Bot/Mil/App/Cor/Pro/Her`), return rule fired, round-trip clean, **0 stalls**. **Shelver2 assignment CERTIFIED from the MegaMart boot log:** `Apple, Corn, ProcessedCorn, Milk, Cheese, Herb, HerbPack, BottledMilk, Coffee` (Shelver1: the 7 Mart-1 items). Boot logs stay in both bootstrappers. Side finding: XP frozen at `0/800` at L10 is BY DESIGN — L10 is max level, `AddXp` short-circuits. |
+
+| 26 | **MegaMart station parity pass (2026-07-17, goal-driven)** — Mart 1 got the owner's two-track 4→6→8 station economy; MegaMart's five machines still ran the old single-track system, and **Milk Bottler was never wired into GameManager at all** (unreachable from the UPGRADES panel — could never be upgraded); Corn Processor and Coffee Bar were wired but missing from the panel list. | The Mart-1 economy redesign flagged MegaMart machines `SplitCapacity=false` to stay untouched (correct at the time); the panel's machine list and the GM wiring were simply never extended. | ✅ Fixed — all five MegaMart machines (Milk Bottler, Corn Processor, Dairy, Leaf Unit, Coffee Bar) now run `SplitCapacity` two-track 4→6→8 using the owner's **existing** Mill cost arrays (Input $150/$300, Output $180/$400 — zero new balance numbers invented); `GameManager.MilkBottler` added + wired; panel lists all MegaMart machines (null-safe in Mart 1). **Deliberately NOT done: hard-gating the cow like the hen** — MegaMart has no Farmer NPC, so a hard-gated cow starves whenever the player idles (the exact hen-starvation deadlock class). Cow keeps the hay-boost model (fed = 1.6× milk). If the owner wants a hard-gated cow, it needs a MegaMart farmer/feeder first. |
 
 ### Balance decision on record
 **Late-game pacing:** the alarming original numbers (L8→L9 = 5,921 s) were measured
