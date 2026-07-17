@@ -33,6 +33,11 @@ namespace MiniMart.EditorTools
             string play = System.IO.Path.Combine(logs, "autoplay.marker");
             string stop = System.IO.Path.Combine(logs, "autostop.marker");
 
+            // Never enter play with a compile pending/running: the session would
+            // boot OLD code and any newly-added marker hooks silently no-op
+            // (cost us a full experiment round once).
+            if (EditorApplication.isCompiling || EditorApplication.isUpdating) return;
+
             if (!EditorApplication.isPlaying && System.IO.File.Exists(play))
             {
                 System.IO.File.Delete(play);

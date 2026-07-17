@@ -58,10 +58,17 @@ namespace MiniMart.Catalog
         /// <summary>What each shelver role is responsible for stocking, per spec Section 1.</summary>
         public static readonly Dictionary<RoleType, ItemType[]> RoleResponsibilities = new Dictionary<RoleType, ItemType[]>
         {
-            // Bug fix: Herb, HerbPack, and FriedEgg were missing — their shelves would
-            // never be restocked by NPCs. Added to balance Shelver 1 & 2 workload.
-            { RoleType.Shelver1, new[] { ItemType.Egg, ItemType.TomatoKetchup, ItemType.Tomato, ItemType.Milk, ItemType.FriedEgg } },
-            { RoleType.Shelver2, new[] { ItemType.Wheat, ItemType.WheatFlour, ItemType.Bread, ItemType.Cheese, ItemType.Herb, ItemType.HerbPack } },
+            // Partitioned BY MART (owner repro: wheat shelf never restocked).
+            // Shelver1 works in Mart 1, Shelver2 in MegaMart — the old split
+            // predated the two-mart division and left Wheat/Flour/Bread owned by
+            // a shelver who doesn't exist in Mart 1 (and Milk owned by one who
+            // doesn't exist in MegaMart), so those shelves were never restocked.
+            { RoleType.Shelver1, new[] { ItemType.Tomato, ItemType.Egg, ItemType.Wheat,
+                                         ItemType.TomatoKetchup, ItemType.WheatFlour,
+                                         ItemType.Bread, ItemType.FriedEgg } },
+            { RoleType.Shelver2, new[] { ItemType.Milk, ItemType.BottledMilk, ItemType.Apple,
+                                         ItemType.Corn, ItemType.ProcessedCorn, ItemType.Cheese,
+                                         ItemType.Herb, ItemType.HerbPack, ItemType.Coffee } },
         };
 
         /// <summary>

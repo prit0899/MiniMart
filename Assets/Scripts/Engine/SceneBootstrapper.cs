@@ -42,6 +42,13 @@ namespace MiniMart
             if (System.IO.File.Exists(System.IO.Path.Combine(logsDir, "testerbot.enabled"))
                 && FindAnyObjectByType<Engine.TesterBot>() == null)
                 new GameObject("TesterBot").AddComponent<Engine.TesterBot>();
+            // One-shot buyer experiment (owner repro: MAX wheat shelf untouched).
+            string wt = System.IO.Path.Combine(logsDir, "wheattest.marker");
+            if (System.IO.File.Exists(wt))
+            {
+                System.IO.File.Delete(wt);
+                new GameObject("WheatExperiment").AddComponent<Engine.WheatShelfExperiment>();
+            }
 #endif
             // ═══════════════════════════════════════════════════════════════════
             //  CAMERA SETUP (must happen in Awake so Camera.main is valid)
@@ -624,6 +631,18 @@ namespace MiniMart
                 }
             }
 
+            void GateWithDep(float cost, int minLevel, string label, string requiredPurchase, params GameObject[] targets)
+            {
+                foreach (var t in targets)
+                    if (t != null) t.SetActive(false);
+                if (targets.Length > 0 && targets[0] != null)
+                {
+                    var pad = PurchasePad.Create(targets[0].transform.position, cost, label, targets);
+                    pad.MinLevel = minLevel;
+                    pad.RequiredPurchase = requiredPurchase;
+                }
+            }
+
             // ══════════ TWO-MART SPLIT ══════════
             // Mart 1 "Mini Mart" (Game.unity):  tomato, egg, wheat chains.
             // Mart 2 "MegaMart" (MegaMart.unity): milk, corn, herb, coffee,
@@ -657,12 +676,12 @@ namespace MiniMart
 
                 Gate(50f,  3, "Wheat Farm",     wheatFarmGO, ShelfOf(Core.ItemType.Wheat)?.gameObject, rackWheat.gameObject);
 
-                Gate(125f, 4, "Wheat Mill",     millGO, ShelfOf(Core.ItemType.WheatFlour)?.gameObject, rackFlour.gameObject);
+                GateWithDep(125f, 4, "Wheat Mill",     "Hire Chef", millGO, ShelfOf(Core.ItemType.WheatFlour)?.gameObject, rackFlour.gameObject);
                 Gate(150f, 4, "Hire Chef",      chefGO);
 
-                Gate(75f,  5, "Ketchup Blender", blenderGO, ShelfOf(Core.ItemType.TomatoKetchup)?.gameObject, rackKetchup.gameObject);
-                Gate(200f, 5, "Bread Oven",     ovenGO, ShelfOf(Core.ItemType.Bread)?.gameObject, rackBread.gameObject);
-                Gate(110f, 5, "Egg Stove",      stoveGO, ShelfOf(Core.ItemType.FriedEgg)?.gameObject, rackFried.gameObject);
+                GateWithDep(75f,  5, "Ketchup Blender", "Hire Chef", blenderGO, ShelfOf(Core.ItemType.TomatoKetchup)?.gameObject, rackKetchup.gameObject);
+                GateWithDep(200f, 5, "Bread Oven",     "Hire Chef", ovenGO, ShelfOf(Core.ItemType.Bread)?.gameObject, rackBread.gameObject);
+                GateWithDep(110f, 5, "Egg Stove",      "Hire Chef", stoveGO, ShelfOf(Core.ItemType.FriedEgg)?.gameObject, rackFried.gameObject);
 
                 // L6: the big milestone — the road to MegaMart opens.
                 var travelPad = SceneTransition.Create(new Vector3(35f, 0, 55f), "MegaMart", "GO TO MEGAMART").gameObject;
