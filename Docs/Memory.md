@@ -63,8 +63,22 @@ and verified in code:**
   decomposition) + A\* + funnel string-pull + Reynolds steering; marker-driven QA
   harness; `DataValidator` **42,710 assertions green** (verified this session).
 
-**The ONLY remaining parity item is a real-iPhone device test pass** — it needs
-physical hardware, so it is genuinely owner-blocked, not a code gap.
+**Device-readiness (code side) — verified 2026-07-17, all risks a build could
+hit are retired:**
+- **Touch input works** — `PlayerInputHandler` is touch-first (floating `Joystick`
+  + `Input.GetTouch(0)` tap-to-move) with mouse only as a desktop fallback; the
+  game is *playable* on a phone, not just compilable.
+- **No QA code ships** — `TesterBot` + `WheatShelfExperiment` + marker hooks are
+  all `#if UNITY_EDITOR`.
+- **Frame budget** — per-frame-per-agent steering/movement is allocation-free.
+- **iOS target configured** — iPhone+iPad, iOS 15 min, portrait.
+- **DSA documented to standard** — [Architecture.md §6](Architecture.md).
+
+**The ONLY remaining parity item is physically running the build on a real
+iPhone** (touch *feel*, thermals, true on-device FPS). That needs a Mac+Xcode
+signed into the owner's Apple account + the owner's device — genuinely
+owner-hardware-blocked, not a code gap. Steps: Unity → Build for iOS → run the
+generated Xcode project on-device; paste any build/runtime error back for a fix.
 
 **Two things I got wrong last session and corrected here:** I reported the
 MegaMart station economy and the gameplay video as "blocked on owner" without
