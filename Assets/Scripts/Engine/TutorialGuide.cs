@@ -27,6 +27,14 @@ namespace MiniMart.Engine
         private Transform worldArrow;   // bouncing yellow arrow above the current target
         private Text bannerText;
         private GameObject bannerGO;
+
+        // Spotlight: a dark overlay with a soft circular hole that follows the
+        // current objective on screen, so a brand-new player literally cannot
+        // look at the wrong thing (owner + real-reviewer feedback: "can't
+        // understand where to start").
+        private GameObject spotCanvasGO;
+        private RectTransform spotRect;
+        private Transform spotTarget;
         private float bobT;
         private float startCash = -1f;
         private int startPadCount = -1;
@@ -35,6 +43,7 @@ namespace MiniMart.Engine
         {
             BuildWorldArrow();
             BuildBanner();
+            BuildSpotlight();
         }
 
         private void BuildWorldArrow()
@@ -138,6 +147,7 @@ namespace MiniMart.Engine
                     Vfx.Stars(gm.Player.transform.position); // gentle falling stars send-off
                     // Linger 4 seconds, then clean up everything.
                     Destroy(worldArrow != null ? worldArrow.gameObject : null, 0.1f);
+                    Destroy(spotCanvasGO, 0.1f);   // lights back on
                     Destroy(bannerGO, 4f);
                     Destroy(gameObject, 4.2f);
                     enabled = false;
@@ -158,11 +168,65 @@ namespace MiniMart.Engine
         private void Point(Transform target, string message)
         {
             if (bannerText != null) bannerText.text = message;
+            spotTarget = target;
             if (worldArrow == null) return;
             if (target == null) { worldArrow.gameObject.SetActive(false); return; }
             worldArrow.gameObject.SetActive(true);
             var p = target.position;
             worldArrow.position = new Vector3(p.x, worldArrow.position.y, p.z);
+        }
+
+        /// <summary>Dark screen overlay with a soft transparent hole. The hole is a
+        /// procedurally generated radial texture; each frame the (oversized) image is
+        /// re-centred on the objective's screen position so the hole tracks it.
+        /// Sits on a canvas with NEGATIVE sort order — always behind the HUD, never
+        /// blocks touches (raycastTarget off).</summary>
+        private void BuildSpotlight()
+        {
+            spotCanvasGO = new GameObject("TutorialSpotlight", typeof(Canvas));
+            var canvas = spotCanvasGO.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = -10;                 // behind every HUD canvas
+
+            int N = 256;
+            float holeR = 52f, softR = 108f;           // px in texture space
+            var tex = new Texture2D(N, N, TextureFormat.RGBA32, false);
+            var px = new Color[N * N];
+            Vector2 c = new Vector2(N / 2f, N / 2f);
+            for (int y = 0; y < N; y++)
+                for (int x = 0; x < N; x++)
+                {
+                    float d = Vector2.Distance(new Vector2(x, y), c);
+                    float a = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(holeR, softR, d));
+                    px[y * N + x] = new Color(0f, 0f, 0f, a * 0.6f);
+                }
+            tex.SetPixels(px); tex.Apply();
+
+            var imgGO = new GameObject("SpotDim", typeof(RectTransform));
+            imgGO.transform.SetParent(spotCanvasGO.transform, false);
+            var img = imgGO.AddComponent<Image>();
+            img.sprite = Sprite.Create(tex, new Rect(0, 0, N, N), new Vector2(0.5f, 0.5f));
+            img.raycastTarget = false;                 // never eat input
+            spotRect = (RectTransform)imgGO.transform;
+            // Big enough that its edges never show, whatever the hole position.
+            float size = Mathf.Max(Screen.width, Screen.height) * 6f;
+            spotRect.sizeDelta = new Vector2(size, size);
+        }
+
+        private void LateUpdate()
+        {
+            if (spotRect == null) return;
+            var cam = Camera.main;
+            if (spotTarget == null || cam == null)
+            {
+                spotCanvasGO.SetActive(false);
+                return;
+            }
+            spotCanvasGO.SetActive(true);
+            Vector3 sp = cam.WorldToScreenPoint(spotTarget.position);
+            // Anchored to canvas centre: offset = screen pos - screen centre.
+            spotRect.anchoredPosition = new Vector2(sp.x - Screen.width / 2f,
+                                                    sp.y - Screen.height / 2f);
         }
 
         private ShopShelf FindShelf(Core.ItemType item)

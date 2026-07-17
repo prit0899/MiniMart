@@ -53,7 +53,7 @@ the validator is green with them.
 
 | # | Owner said / QA found | Root cause | Status |
 |---|---|---|---|
-| 1 | *"lots of confusion, can't understand where to start"* (real human reviewers) | No onboarding at all | 🟡 Partly fixed: TutorialGuide, UnlockGuide arrow + toast, per-station hints. Spotlight path still open. |
+| 1 | *"lots of confusion, can't understand where to start"* (real human reviewers) | No onboarding at all | ✅ Fixed: TutorialGuide (harvest→stock→collect→build steps, big arrow + banner), UnlockGuide arrow + toast per level, per-station hints, and now a **spotlight** — the world dims with a soft light-hole tracking each objective during the first session (procedural radial overlay, behind the HUD, never blocks input). Smoke-tested on fresh save: tutorial completes, no exceptions. |
 | 2 | *"one level upgrade gives 5-6 things unlock but actual need is 1-3"* | Ladder too dense | ✅ Fixed — 1–3 unlocks per level. |
 | 3 | *"split mall in 2 parts… make new game scene like reference"* | Single map | ✅ Fixed — MegaMart is a separate scene + travel pad. |
 | 4 | **MegaMart had no working checkout L6–L8** | Counter 3 was a $400 pad gated at L9, but it was the scene's *only* till — buyers could never pay, income and XP froze on arrival | ✅ Fixed — Counter 3 ships open with MegaMart. |
