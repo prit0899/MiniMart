@@ -272,6 +272,18 @@ namespace MiniMart.Characters
 
         protected virtual void OnArrived() { }
 
+        /// <summary>Hard-stop all movement WITHOUT firing OnArrived. Used when an
+        /// agent reaches its purpose "well enough" (queue slot, shelf reach) and
+        /// must stop orbiting under steering forces.</summary>
+        protected void HaltMovement()
+        {
+            velocity = Vector3.zero;
+            hasTarget = false;
+            pathWaypoints?.Clear();
+            currentWaypointIndex = 0;
+            State = CharacterState.Idle;
+        }
+
         public bool CanCarryMore(int amount = 1) => CarryCount + amount <= CarryCapacity;
 
         public bool TryPickUp(int amount = 1)

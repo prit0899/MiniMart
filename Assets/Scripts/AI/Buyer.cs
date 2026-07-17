@@ -153,7 +153,24 @@ namespace MiniMart.AI
         public override void Tick(float dt)
         {
             base.Tick(dt);
-            if (HasCheckedOut || hasTarget) return;
+            if (HasCheckedOut) return;
+
+            // ── Anti-scrum overrides (owner repro: full wheat shelf, buyers roaming,
+            // "Serve N: 0" — ZERO checkouts). These run BEFORE the hasTarget gate,
+            // because under steering a jostled buyer may never *finish* arriving
+            // (the arrival radius is tiny, separation shoves it around), so gating
+            // all queue/shop logic on hasTarget froze the whole store.
+
+            // A buyer whose target shelf is already within arm's reach starts
+            // picking NOW — no need to hit a pinpoint arrival in a crowd.
+            if (queuedCounter == null && pickingShelf == null && currentTarget != null
+                && WithinReach(currentTarget))
+            {
+                HaltMovement();
+                pickingShelf = currentTarget;
+                currentTarget = null;
+                pickBeat = 0f;
+            }
 
             // Standing in a checkout line: keep our queue slot, patience runs down,
             // impatient shoppers walk out.
@@ -168,16 +185,37 @@ namespace MiniMart.AI
                     return;
                 }
 
-                // Shuffle forward to our slot as the line advances (no more one-point pileups).
                 int idx = queuedCounter.Line.IndexOf(this);
                 if (idx >= 0)
                 {
                     Vector3 slot = queuedCounter.GetQueueSlot(idx);
-                    Vector3 flat = transform.position; flat.y = 0; slot.y = 0;
-                    if ((flat - slot).sqrMagnitude > 0.3f) SetTarget(slot);
+                    Vector3 flat = transform.position; flat.y = 0f; slot.y = 0f;
+                    float dist = (flat - slot).magnitude;
+
+                    if (dist > 6f)
+                    {
+                        // Far from the line: navigate normally.
+                        if (!hasTarget) SetTarget(slot);
+                    }
+                    else if (dist > 0.05f)
+                    {
+                        // Near the line: KINEMATIC glide onto the slot — deterministic,
+                        // immune to separation shoving. This is what guarantees the
+                        // front buyer actually stands on slot 0 so checkout proceeds.
+                        HaltMovement();
+                        Vector3 step = Vector3.MoveTowards(flat, slot, CurrentSpeed * 0.8f * dt);
+                        step.y = transform.position.y;
+                        transform.position = step;
+                        Vector3 face = queuedCounter.transform.position - transform.position; face.y = 0f;
+                        if (face.sqrMagnitude > 0.01f)
+                            transform.rotation = Quaternion.RotateTowards(transform.rotation,
+                                Quaternion.LookRotation(face, Vector3.up), 540f * dt);
+                    }
                 }
                 return;
             }
+
+            if (hasTarget) return;
 
             // Arrived at the tills while none was open (e.g. level 1, player elsewhere):
             // wait around with queue patience; join the moment a counter opens.
@@ -435,7 +473,7 @@ namespace MiniMart.AI
         {
             Economy.CashCounter best = null;
             foreach (var c in counters)
-                if (c != null && c.gameObject.activeInHierarchy && c.IsOpen && (best == null || c.Line.Count < best.Line.Count)) best = c;
+                if (c != null && c.gameObject.activeInHierarchy && c.IsUnlocked && (best == null || c.Line.Count < best.Line.Count)) best = c;
             return best;
         }
 
@@ -450,8 +488,16 @@ namespace MiniMart.AI
             if (counter == null || queuedCounter != counter || leaving || HasCheckedOut) return false;
             Vector3 a = transform.position; a.y = 0f;
             Vector3 b = counter.GetQueueSlot(0); b.y = 0f;
-            return (a - b).sqrMagnitude <= 0.7f * 0.7f;
+            // Generous ring: the kinematic queue glide puts the buyer ON the slot,
+            // but a busy till must still serve someone a half-step off it.
+            return (a - b).sqrMagnitude <= 1.5f * 1.5f;
         }
+
+        /// <summary>No body-shoving while standing in a queue or picking at a shelf —
+        /// separation forces were pushing the front buyer out of the checkout ring
+        /// and pickers out of shelf reach, freezing the store under crowds.</summary>
+        protected override float SeparationWeight =>
+            (queuedCounter != null || pickingShelf != null || waitingForCounter) ? 0f : 0.6f;
 
         private void LeaveWithoutPaying(string reason)
         {
