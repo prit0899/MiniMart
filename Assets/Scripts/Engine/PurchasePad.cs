@@ -18,6 +18,7 @@ namespace MiniMart.Engine
         /// disclosure like the reference game: a fresh player sees 3-4 pads, not 24 —
         /// each level-up "drip-feeds" the next batch, which is the addiction loop.</summary>
         public int MinLevel = 1;
+        public string RequiredPurchase = "";
 
         private float remaining;
         private TextMesh costLabel;
@@ -132,7 +133,8 @@ namespace MiniMart.Engine
             // Level lock: keep the whole pad invisible (and payment disabled)
             // until the store reaches MinLevel. Children are toggled, not the
             // root, so this Update keeps running to notice the unlock.
-            bool locked = gm != null && gm.StoreLevel < MinLevel;
+            bool locked = (gm != null && gm.StoreLevel < MinLevel) || 
+                          (gm != null && !string.IsNullOrEmpty(RequiredPurchase) && !gm.IsPadPurchased(RequiredPurchase));
             if (locked != lockedHidden)
             {
                 lockedHidden = locked;

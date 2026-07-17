@@ -511,6 +511,7 @@ namespace MiniMart
             shelver1Comp.AssignedShelves = shelvesList.FindAll(s =>
                 RoleCatalog.RoleResponsibilities[Core.RoleType.Shelver1].Contains(s.Item)).ToArray();
             shelver1Comp.Hen = henCoopComp;   // owner spec: shelver also feeds the hen
+            Debug.Log($"[Boot] Shelver1 assigned shelves: {string.Join(", ", System.Array.ConvertAll(shelver1Comp.AssignedShelves, sh => sh.Item.ToString()))}");
             if (shelver1GO.GetComponent<WobbleAnimator>() == null) shelver1GO.AddComponent<WobbleAnimator>();
             if (shelver1GO.GetComponent<UI.CarryVisual>() == null) shelver1GO.AddComponent<UI.CarryVisual>();
             PrimitiveFactory.BuildCharacter(shelver1GO, new Color(0.92f, 0.3f, 0.55f),

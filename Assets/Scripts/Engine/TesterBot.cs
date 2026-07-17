@@ -110,6 +110,7 @@ namespace MiniMart.Engine
                 if (player != null)
                 {
                     holdUntil = 0f; decideAt = 0f;
+                    lastProgressAt = Time.timeSinceLevelLoad;   // per-scene clock reset
                     Note($"BOT REATTACH scene={UnityEngine.SceneManagement.SceneManager.GetActiveScene().name}");
                 }
             }
@@ -203,9 +204,23 @@ namespace MiniMart.Engine
             // savings to MegaMart — that's where every remaining unlock lives.
             var travel = FindAnyObjectByType<SceneTransition>();
             bool inMart1 = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "Game";
-            if (travel != null && inMart1 && gm.StoreLevel >= 6 && gm.Economy.PlayerCash >= 60f)
+            // Fare is $500; bring seed money too — travelling at ~$500 strands the
+            // bot (and a player) in a mart with zero income sources ($9, nothing
+            // to buy, nothing to sell — observed live).
+            if (travel != null && inMart1 && gm.StoreLevel >= 6 && gm.Economy.PlayerCash >= 660f)
             {
                 Note("TRAVELLING to MegaMart");
+                Hold(travel.transform.position, 4f);
+                return;
+            }
+
+            // Priority 3b: stranded in MegaMart — broke, nothing carried, nothing
+            // ripe, no money on the floor. A real player takes the return pad back
+            // to Mart 1 to earn; so does the bot now.
+            if (travel != null && !inMart1 && gm.Economy.PlayerCash < 60f
+                && player.CarryCount == 0)
+            {
+                Note("RETURNING to Mart 1 to earn (broke in MegaMart)");
                 Hold(travel.transform.position, 4f);
                 return;
             }

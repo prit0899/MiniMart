@@ -145,6 +145,7 @@ namespace MiniMart
             Boot();
         }
 
+
         private void Boot()
         {
             // Configure workers FIRST — Configure() resets every worker to level 1,
@@ -332,6 +333,12 @@ namespace MiniMart
         // ── Purchase-pad persistence (reference expansion flow) ──
         private readonly System.Collections.Generic.HashSet<string> purchasedPads =
             new System.Collections.Generic.HashSet<string>();
+
+        public bool IsPadPurchased(string label)
+        {
+            if (string.IsNullOrEmpty(label)) return false;
+            return purchasedPads.Contains(label);
+        }
 
         public void MarkPadPurchased(string label)
         {

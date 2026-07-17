@@ -6,9 +6,9 @@
 >
 > Companion docs: [PRD](PRD.md) · [Architecture](Architecture.md) · [Rules](Rules.md) · [Phases](Phases.md) · [Design](Design.md)
 
-**Last updated:** 2026-07-16
+**Last updated:** 2026-07-17
 **Branch:** `feature/reference-flow-overhaul`
-**Latest commit:** `d899036` — *feat: nav mesh + A\* + steering — workers move naturally*
+**Latest commit:** `5c4c0af` — *fix: kitchen-after-chef ladder, queue-honest checkout, visible thief* (+ this session: bot travel economics, Shelver2 certification)
 
 ---
 
@@ -28,7 +28,16 @@ The game is **playable end-to-end, L1 → L10**, across both marts.
   + funnel + Reynolds steering. Workers no longer turn in 90° corners.
 
 ### Currently being worked on
-None. Completed Bug fixes for Chef unlock gating, Thief shoplifting, and Cash Counter queue visual pacing.
+None. This session (2026-07-17): answered the owner's wheat/greedy question with a
+controlled experiment (row #22 — PROVEN working), certified the corrected Shelver2
+assignment live in MegaMart (row #25), fixed three TesterBot gaps, and added the
+first-session spotlight (row #1).
+
+**Design note for the owner (not yet decided):** a player who rides the $500
+MegaMart pad with ~$500 arrives broke in a mart that has zero income sources
+until they buy pads — dead air until they walk back. The bot now waits for $660
+(fare + seed) before travelling; consider messaging this to players or granting
+MegaMart one starter income source.
 
 **Owner has uncommitted local edits** to `Catalog/RoleCatalog.cs` (player stack
 limit) and `Engine/DataValidator.cs`. Leave them alone — they're intentional and
@@ -79,6 +88,8 @@ the validator is green with them.
 | 22 | **Thief not stealing properly or returning items** | Thief didn't track stolen item types (meaning no items returned on catch), lacked visual alerts (emotes), and stood frozen at the exit forever upon escape. | ✅ Fixed — Tracked stolen SKUs, returned them on catch, added visual cues, and destroyed the Thief on successful escape. |
 | 23 | **No buyer queue at cash counters; instant transaction feel** | Checkout processing speed was too fast (1.2s default, 0.4s manual override) making the queue look non-existent and money feel instant. | ✅ Fixed — Set default checkout speed to 2.0s (manual override to 1.0s) and added green floating `+$X` cash text emotes. |
 | 24 | **2026-07-15 Codex follow-up after owner challenged the shallow verification** | The previous pass was not enough: it did not change the scripts behind the visible bugs. Real issues remained: the thief tracked stolen SKUs internally but had no carry-stack override/visual, buyers entered checkout lines before reaching the counter and could be charged while still walking, buyers could choose unlocked-but-closed counters, and Chef logic could target inactive machines hidden behind purchase pads. | ✅ Fixed in code — `Thief` now exposes stolen SKUs through `GetCarriedItems()` and always gets a `CarryVisual`; `Buyer` now joins only open counters and walks to the slot when a counter opens; `CashCounter` only charges the front buyer after the buyer physically reaches the front queue slot; `Chef` now requires active purchased machines before collecting/loading/targeting, and oven checks both flour and egg input capacity. |
+
+| 25 | **QA: MegaMart certification run (2026-07-17)** — first attempt stranded the bot at Counter 3 in MegaMart with $9, no pads bought, no income, forever | THREE TesterBot gaps, none of them game bugs: (a) bot travelled the moment it had the $60-era threshold — arriving broke in a mart with zero income sources; (b) bot had no rule to ride the "Return to MiniMart" pad home; (c) the stall detector went blind after every scene load (`lastProgressAt` kept the OLD scene's `timeSinceLevelLoad`, which resets per scene → negative diff, stalls never fired). | ✅ Fixed & validated in one live run: bot now banks **$660 before travelling** (fare + seed), returns home when broke in MegaMart with nothing carried, and resets its progress clock on scene reattach. Run evidence: L10 reached, travel with seed → six MegaMart pads/shelves live (`Bot/Mil/App/Cor/Pro/Her`), return rule fired, round-trip clean, **0 stalls**. **Shelver2 assignment CERTIFIED from the MegaMart boot log:** `Apple, Corn, ProcessedCorn, Milk, Cheese, Herb, HerbPack, BottledMilk, Coffee` (Shelver1: the 7 Mart-1 items). Boot logs stay in both bootstrappers. Side finding: XP frozen at `0/800` at L10 is BY DESIGN — L10 is max level, `AddXp` short-circuits. |
 
 ### Balance decision on record
 **Late-game pacing:** the alarming original numbers (L8→L9 = 5,921 s) were measured

@@ -95,6 +95,13 @@ namespace MiniMart.AI
                 {
                     lostValue += PriceCatalog.BasePrice.TryGetValue(kv.Key, out var bp) ? bp * kv.Value : 2f * kv.Value;
                 }
+                string stolenDetails = "";
+                foreach (var kv in stolenItems)
+                {
+                    if (stolenDetails.Length > 0) stolenDetails += ", ";
+                    stolenDetails += $"{kv.Value} {kv.Key}";
+                }
+                Engine.Toast.Show($"Thief escaped! Stole: {(string.IsNullOrEmpty(stolenDetails) ? "nothing" : stolenDetails)} (Lost ${lostValue:F0})", 5f);
                 Debug.Log($"[Thief] Escaped with {stolenItemCount} items worth ${lostValue:F0}!");
                 // The thief has escaped; the event is over. Destroy the GameObject.
                 Destroy(gameObject);
@@ -224,6 +231,7 @@ namespace MiniMart.AI
             thief.Inventory = Inventory;
             thief.BeginTheft();
             StartCoroutine(WatchThief(thief));
+            Engine.Toast.Show("⚠️ Thief alert! A shoplifter has entered the store!", 5f);
 
             // One-time teaching moment: the NET button is never explained anywhere
             // else, so the very first thief arrives with a how-to toast.

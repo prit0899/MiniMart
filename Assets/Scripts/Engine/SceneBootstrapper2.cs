@@ -309,6 +309,7 @@ namespace MiniMart
             var shelver2GO = Spawn(ShelverPrefab, "Stocker2", new Vector2(5, 50));
             var shelver2Comp = shelver2GO.GetComponent<Shelver>() ?? shelver2GO.AddComponent<Shelver>();
             shelver2Comp.AssignedShelves = shelvesList.FindAll(s => RoleCatalog.RoleResponsibilities[Core.RoleType.Shelver2].Contains(s.Item)).ToArray();
+            Debug.Log($"[Boot] Shelver2 assigned shelves: {string.Join(", ", System.Array.ConvertAll(shelver2Comp.AssignedShelves, sh => sh.Item.ToString()))}");
             if (shelver2GO.GetComponent<WobbleAnimator>() == null) shelver2GO.AddComponent<WobbleAnimator>();
             if (shelver2GO.GetComponent<UI.CarryVisual>() == null) shelver2GO.AddComponent<UI.CarryVisual>();
             PrimitiveFactory.BuildCharacter(shelver2GO, new Color(0.85f, 0.2f, 0.85f), PrimitiveFactory.CharacterRole.Shelver);
