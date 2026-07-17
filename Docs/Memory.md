@@ -50,7 +50,10 @@ the validator is green with them.
 2. Phase 6 onboarding: first-session spotlight path (dim world → highlight tomato
    farm → shelf → counter). Top open item from real reviewer feedback.
 3. Device (real iPhone) test pass — never done yet.
-4. Gameplay capture for the README (a video/GIF; stills are already in `Docs/images/`).
+4. ~~Gameplay capture for the README~~ ✅ Done 2026-07-17 — `Docs/images/gameplay.gif`
+   (80 frames, 3× speed). Reusable rig: `touch Logs/gifcapture.marker` + autoplay;
+   `GifCaptureSession` dismisses the offline popup, saves frames to `Logs/frames/`,
+   auto-stops; assemble with PIL (scratchpad `make_gif.py` pattern).
 
 ---
 

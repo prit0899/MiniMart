@@ -49,6 +49,13 @@ namespace MiniMart
                 System.IO.File.Delete(wt);
                 new GameObject("WheatExperiment").AddComponent<Engine.WheatShelfExperiment>();
             }
+            // One-shot README gameplay capture (frames -> external GIF assembly).
+            string gif = System.IO.Path.Combine(logsDir, "gifcapture.marker");
+            if (System.IO.File.Exists(gif))
+            {
+                System.IO.File.Delete(gif);
+                new GameObject("GifCapture").AddComponent<Engine.GifCaptureSession>();
+            }
 #endif
             // ═══════════════════════════════════════════════════════════════════
             //  CAMERA SETUP (must happen in Awake so Camera.main is valid)

@@ -7,6 +7,10 @@
 Grow crops → process them into goods → stock the shelves → serve customers →
 reinvest the profit → grow from a tiny mini mart into a two-store empire.
 
+![Mini Mart — live gameplay](Docs/images/gameplay.gif)
+
+*Live gameplay (3× speed): workers farm, cook, and restock while customers shop and queue.*
+
 ![Mini Mart — full map](Docs/images/map-overview.png)
 
 *The whole store in one enclosed building: shop floor up top, farm & processing yard below.*
