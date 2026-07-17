@@ -1,3 +1,7 @@
+// QA harness — must never ship in a device/player build. Every spawn site
+// (SceneBootstrapper 1 & 2) is already inside #if UNITY_EDITOR, so gating the
+// class itself keeps the tester bot out of the iOS binary entirely.
+#if UNITY_EDITOR
 using System.Collections.Generic;
 using UnityEngine;
 using MiniMart.Characters;
@@ -315,3 +319,4 @@ namespace MiniMart.Engine
         }
     }
 }
+#endif
