@@ -136,7 +136,88 @@ Scene loads
 `BuyerSpawner`, `PhoneOrderManager`, `TheftManager`, and the cash counters
 whenever the level changes.
 
-## 6. QA harness (no MCP / no editor scripting needed)
+## 6. Algorithms & data structures (the engineering core)
+
+The systems below are where the "same-to-same engineering standards / DSA" work
+lives. Each is documented with its data structure, the algorithm, and its cost so
+another developer (or a portfolio reviewer) can reason about it without reading
+every line.
+
+### 6.1 Navigation pipeline — `Map/NavMesh.cs`, `Map/GridPathfinder.cs`
+
+A four-stage pipeline turns a raw walkability grid into smooth, natural worker
+paths. It replaced a naive 4-neighbour grid A\* that could only emit Manhattan
+staircases (workers turning in hard 90° corners — the owner's "not like the
+recent game" complaint).
+
+| Stage | Data structure | Algorithm | Cost |
+|---|---|---|---|
+| **1. Bake** | `bool[,]` walkability → `List<Poly>` (each an axis-aligned rect: `xMin/xMax/zMin/zMax`) + `int[,] cellToPoly` | **Greedy maximal-rectangle decomposition**: scan for the first free cell, grow right while free, then grow up while the whole row span stays free; stamp those cells to one poly; repeat. Collapses a ~100×82 = 8,200-cell grid into a few dozen convex polygons. | `O(cells)` amortised — each cell is claimed once. Runs once at boot. |
+| **2. Link** | Per-poly `Links` (neighbour ids) + `Portals` (world-space shared-edge segments) | Two polys sharing a cell edge get a **portal** = the overlapping span of that edge, **inset by `AgentRadius` (0.35u)** at both ends so a body-radius agent rounds the corner without clipping. | `O(polys²)` over a few dozen nodes — negligible, once at boot. |
+| **3. A\*** | `float[] gScore`, `int[] cameFrom`, `List<int>` open set | **A\*** over the *polygon graph* (a few dozen nodes, not 8,200 cells). Heuristic = straight-line distance between poly centres (admissible → optimal). Open set is a linear min-scan `List` — deliberately not a binary heap, because at this node count the heap's constant factor loses; documented as a conscious trade-off. | `O(V²)` worst case with V ≈ dozens — microseconds. On-demand per retarget, **not per frame**. |
+| **4. Funnel** | Portal corridor → `List<Vector3>` corner points | **Simple Stupid Funnel Algorithm** (string-pulling): walk the portal corridor keeping a left/right "funnel", emit a corner only when the funnel would invert. Produces the true shortest path *inside* the corridor — natural diagonals that hug corners instead of axis-aligned zig-zags. | `O(portals)` linear. |
+
+`GridPathfinder` remains as an **8-neighbour A\* fallback** (and the collision
+"source of truth" — `IsWalkableCell`) for the rare case the nav mesh has no route;
+below that, a straight-line grid-checked move guarantees an agent never teleports
+through geometry (invariant #1).
+
+### 6.2 Steering — `Characters/Steering.cs`, integrated in `CharacterBase`
+
+Path corner points are *followed* by **classic Reynolds steering** on the XZ
+plane. Every behaviour returns a **force** (desired-velocity minus current), the
+caller sums the ones it wants, clamps to `maxForce`, and integrates into velocity
+— that accumulation is what makes agents bank into turns and ease out instead of
+snapping headings.
+
+- **Seek / Arrive** — head to the next corner; Arrive ramps speed down inside
+  `slowRadius` so agents don't overshoot-and-jitter at the goal.
+- **Separation** — inverse-distance push from nearby agents (`(1 − d/radius)`,
+  closer ⇒ stronger) so a crowd flows around itself instead of grinding through.
+- **Flee** — scatter from a threat (thief / over-crowded till).
+- **AvoidWalls** — three look-ahead "feelers" (centre + two whiskers); a feeler on
+  an unwalkable cell steers the agent away, so it curves around furniture rather
+  than bumping and right-angle-sliding.
+
+This layer is **allocation-free per frame** — it runs for the whole crowd every
+frame with zero GC pressure, which is the system-design property that keeps the
+frame budget safe on a phone.
+
+### 6.3 Greedy item selection — the "wheat shelf" answer
+
+Both buyers (`AI/Buyer.cs`) and shelvers (`Characters/Shelver.cs`) originally used
+an **all-or-nothing greedy** that picked the *first* basket item / *emptiest*
+shelf and then blocked on it — so a buyer waiting on sold-out bread would ignore a
+FULL tomato shelf beside it (the owner's exact bug report). The corrected model:
+
+- **Buyer** → `FindBestStockedShelf()`: the **nearest shelf holding ANY still-wanted
+  item that is actually in stock**. Items leave the shelf **one-per-beat**, so
+  several buyers at one shelf interleave and *share* stock naturally; whoever is
+  left when it runs dry pays for a partial basket (≤10 items/order).
+- **Shelver** → picks the **emptiest shelf it can actually refill** (has storage
+  stock for), not the emptiest outright — so it never idles next to an
+  un-restockable shelf while others sit empty.
+
+Proven by a controlled experiment (`WheatShelfExperiment`): wheat shelf forced to
+20/20 MAX, every other shelf + wheat storage zeroed, 12 buyers → **all 20 taken in
+75 sim-s**. The algorithm was never the failure; missing restock + checkout scrum
+were (see [Memory.md](Memory.md) row #22).
+
+### 6.4 Other notable structures
+
+- **`GrowthSlot[]`** (farms, hen, cow) — each slot is an independent fill timer;
+  regrowth and capacity ceilings are data (`FarmCatalog`), not code.
+- **`HashSet<string>` of purchased pads** (`GameManager`) — O(1) gate checks that
+  also drive `PurchasePad.RequiredPurchase` dependency locks (e.g. kitchen pads
+  need "Hire Chef" first).
+- **`Machine.SplitCapacity`** — one flag swaps a station between a single buffer
+  (MegaMart legacy) and independent 4→6→8 input/output buffers with two upgrade
+  tracks (Mart-1 spec), so both economies share one class.
+- **Marker-file QA harness (§7)** — a deliberately dependency-free IPC: the shell
+  drops a file in `Logs/`, the editor polls and obeys. Chosen because Unity MCP is
+  entitlement-gated and UI automation is fragile; a filesystem poll never breaks.
+
+## 7. QA harness (no MCP / no editor scripting needed)
 
 Marker files in `Logs/` drive an automated player:
 
@@ -151,7 +232,7 @@ proximity) — it never teleports or grants itself cash. It writes a live diary 
 `tail` from a normal shell. It buys purchase pads *and* player upgrades, so runs
 exercise the real economy.
 
-## 7. Key invariants (break these and the game breaks)
+## 8. Key invariants (break these and the game breaks)
 
 1. **Visual walls == grid walls.** Always update both.
 2. **`PriceCatalog.UnlockLevel` must mirror the purchase-pad ladder exactly.**
