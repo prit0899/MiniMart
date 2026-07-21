@@ -27,6 +27,15 @@ namespace MiniMart.Economy
 
         private Characters.Cashier cashierVisual;
 
+        // When a gated counter is switched on by its purchase pad, refresh right
+        // away so the cashier appears on purchase instead of waiting for the next
+        // store level-up (GameManager only re-runs RefreshUnlockState on level change).
+        private void OnEnable()
+        {
+            var gm = GameManager.Instance;
+            if (gm != null) RefreshUnlockState(gm.StoreLevel);
+        }
+
         public void RefreshUnlockState(int playerLevel)
         {
             switch (CounterIndex)
@@ -36,8 +45,12 @@ namespace MiniMart.Economy
                     HasCashier = playerLevel >= PriceCatalog.Cashier1AssignableLevel;
                     break;
                 case 2:
-                    IsUnlocked = playerLevel >= PriceCatalog.CashCounter2UnlockLevel;
-                    HasCashier = IsUnlocked; // counter 2 always comes with its cashier per spec
+                    // Owner: Counter 2's cashier must be HIRED BY PURCHASE (like the
+                    // Farmer/Chef), not granted automatically at a store level. The
+                    // counter GameObject is SetActive(false) until its purchase pad is
+                    // bought, so its own active state IS the "purchased" signal.
+                    IsUnlocked = gameObject.activeInHierarchy;
+                    HasCashier = IsUnlocked; // cashier arrives with the purchased counter
                     break;
                 case 3:
                     IsUnlocked = playerLevel >= PriceCatalog.CashCounter3UnlockLevel;

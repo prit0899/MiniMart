@@ -88,8 +88,12 @@ namespace MiniMart.UI
             ClosePricePanelButton?.onClick.AddListener(() => PricePanel?.SetActive(false));
             OpenUpgradePanelButton?.onClick.AddListener(() => { PricePanel?.SetActive(false); UpgradePanel?.SetActive(true); });
             CloseUpgradePanelButton?.onClick.AddListener(() => UpgradePanel?.SetActive(false));
-            FulfilOrderButton?.onClick.AddListener(OnFulfilOrder);
-            DismissOrderButton?.onClick.AddListener(OnDismissOrder);
+            // Owner: phone orders are fulfilled by physically carrying the items to
+            // the van (PlayerInteraction loads it on contact) — NOT by a Collect
+            // button — and the card cannot be closed/dismissed. Hide both buttons so
+            // the card is a pure readout of what the van still wants.
+            FulfilOrderButton?.gameObject.SetActive(false);
+            DismissOrderButton?.gameObject.SetActive(false);
 
             if (phoneOrders != null)
                 phoneOrders.OnNewOrder += ShowPhoneOrder;
@@ -179,28 +183,20 @@ namespace MiniMart.UI
                     ? $"Lv {gm.StoreLevel}  MAX"
                     : $"Lv {gm.StoreLevel}  {gm.StoreXp}/{gm.XpToNextLevel} XP";
 
-            // Grey out FULFIL until storage can actually cover the order — tapping it
-            // with short stock did nothing but log "Not enough stock".
-            if (FulfilOrderButton != null && pendingOrder != null && phoneOrders != null)
-                FulfilOrderButton.interactable = phoneOrders.CanFulfil(pendingOrder);
+            // Phone-order card is shown ONLY while the player stands near the
+            // delivery van (owner). It's a live readout of what the van still wants;
+            // the player fulfils by carrying those items over. Drop the reference
+            // once the order clears so the card and chip both go quiet.
+            if (pendingOrder != null && (pendingOrder.IsExpired || pendingOrder.IsFulfilled))
+                pendingOrder = null;
 
-            // Live countdown on the order card; auto-hide when the order expires.
-            if (pendingOrder != null && PhoneOrderPanel != null && PhoneOrderPanel.activeSelf)
+            bool nearVan = pendingOrder != null && PlayerNearOrderVan(pendingOrder);
+            if (PhoneOrderPanel != null && PhoneOrderPanel.activeSelf != nearVan)
+                PhoneOrderPanel.SetActive(nearVan);
+            if (nearVan)
             {
-                if (pendingOrder.IsExpired || pendingOrder.IsFulfilled)
-                {
-                    PhoneOrderPanel.SetActive(false);
-                    pendingOrder = null;
-                }
-                else
-                {
-                    phoneTextTimer += Time.deltaTime;
-                    if (phoneTextTimer >= 1f)
-                    {
-                        phoneTextTimer = 0f;
-                        RefreshPhoneOrderText();
-                    }
-                }
+                phoneTextTimer += Time.deltaTime;
+                if (phoneTextTimer >= 0.5f) { phoneTextTimer = 0f; RefreshPhoneOrderText(); }
             }
 
             // Reference has NO running inventory list — the storage racks in the world
@@ -255,9 +251,21 @@ namespace MiniMart.UI
 
         private void ShowPhoneOrder(Engine.PhoneOrder order)
         {
+            // Register the order (drives the persistent chip). The full card only
+            // appears once the player walks up to the van — see Update().
             pendingOrder = order;
             RefreshPhoneOrderText();
-            PhoneOrderPanel?.SetActive(true);
+        }
+
+        /// <summary>True while the player stands next to the van carrying this order.</summary>
+        private bool PlayerNearOrderVan(Engine.PhoneOrder order)
+        {
+            if (gm == null || gm.Player == null) return false;
+            Vector3 pp = gm.Player.transform.position;
+            foreach (var van in FindObjectsByType<MiniMart.Characters.DeliveryVan>(FindObjectsSortMode.None))
+                if (van.Order == order && Vector3.Distance(pp, van.transform.position) <= 4.5f)
+                    return true;
+            return false;
         }
 
         private float phoneTextTimer;

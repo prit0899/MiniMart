@@ -176,9 +176,9 @@ namespace MiniMart
 
 
 
-            // Red-white candy-striped angled barrier marking the west delivery entrance.
-            PrimitiveFactory.StripedGate(new Vector3(-20f, 0, 55f), 5f);
-            
+            // (Removed the red-white striped gate near Counter 1 — owner found it
+            // meaningless decoration; it read as part of the till.)
+
             // Pathfinder covers the enlarged 100 x 82 world (extra breadth for the
             // wider road + tree perimeter push to Z=82).
             var pfGO = new GameObject("Pathfinder");
@@ -231,9 +231,10 @@ namespace MiniMart
             // ═══════════════════════════════════════════════════════════════════
             // Player upgrade pads — a tidy row along the enclosed farm zone's
             // bottom edge (inside the walls), not stranded on distant grass.
-            UpgradePad.Create(new Vector3(-16f, 0f, 17f), UpgradePad.Kind.PlayerSpeed);
-            UpgradePad.Create(new Vector3(-13f, 0f, 17f), UpgradePad.Kind.PlayerCarry);
-            UpgradePad.Create(new Vector3(-10f, 0f, 17f), UpgradePad.Kind.CropSpeed);
+            // Owner: the green-circle player upgrade pads (Speed/Carry/Crop) were
+            // useless clutter — carry is upgraded from the Upgrades panel (matching
+            // the reference PLAYER row), and the reference has no player speed/crop
+            // upgrade at all. Pads removed.
 
             // ═══════════════════════════════════════════════════════════════════
             //  FARM ROW (inside the building's lower half, left→right per map)
