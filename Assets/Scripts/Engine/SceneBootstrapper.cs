@@ -243,10 +243,16 @@ namespace MiniMart
             var tomatoFarmGO = CreateAt("TomatoFarm", new Vector2(-15f, 25f));
             var tomatoFarmComp = tomatoFarmGO.AddComponent<TomatoFarm>();
             PrimitiveFactory.TomatoFarm(tomatoFarmGO);
+            var tfBadge = tomatoFarmGO.AddComponent<Engine.FarmBadge>();  // owner: farm progress bar
+            tfBadge.Ripe = () => tomatoFarmComp.TotalRipe();
+            tfBadge.Capacity = Catalog.FarmCatalog.TomatoPlantCount * Catalog.FarmCatalog.TomatoMaxPerPlant;
 
             var wheatFarmGO = CreateAt("WheatFarm", new Vector2(-5f, 25f));
             var wheatFarmComp = wheatFarmGO.AddComponent<WheatFarm>();
             PrimitiveFactory.WheatFarm(wheatFarmGO);
+            var wfBadge = wheatFarmGO.AddComponent<Engine.FarmBadge>();
+            wfBadge.Ripe = () => wheatFarmComp.ReadyCount();
+            wfBadge.Capacity = Catalog.FarmCatalog.WheatBoxCount * Catalog.FarmCatalog.WheatMaxPerBox;
 
 
 

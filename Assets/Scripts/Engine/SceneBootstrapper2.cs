@@ -134,14 +134,23 @@ namespace MiniMart
             var cornFieldGO = CreateAt("CornField", new Vector2(-6f, 24f));
             var cornFieldComp = cornFieldGO.AddComponent<CornField>();
             PrimitiveFactory.CornField(cornFieldGO);
+            var cornBadge = cornFieldGO.AddComponent<Engine.FarmBadge>();  // owner: farm progress bar
+            cornBadge.Ripe = () => cornFieldComp.TotalRipe();
+            cornBadge.Capacity = FarmCatalog.CornStalkCount * FarmCatalog.CornMaxPerStalk;
 
             var appleOrchardGO = CreateAt("AppleOrchard", new Vector2(-15f, 24f));
             var appleOrchardComp = appleOrchardGO.AddComponent<AppleOrchard>();
             PrimitiveFactory.AppleOrchard(appleOrchardGO);
+            var appleBadge = appleOrchardGO.AddComponent<Engine.FarmBadge>();
+            appleBadge.Ripe = () => appleOrchardComp.TotalRipe();
+            appleBadge.Capacity = FarmCatalog.AppleTreeCount * FarmCatalog.AppleMaxPerTree;
 
             var herbPatchGO = CreateAt("HerbPatch", new Vector2(4f, 24f));
             var herbPatchComp = herbPatchGO.AddComponent<HerbPatch>();
             PrimitiveFactory.HerbPatch(herbPatchGO);
+            var herbBadge = herbPatchGO.AddComponent<Engine.FarmBadge>();
+            herbBadge.Ripe = () => herbPatchComp.TotalRipe();
+            herbBadge.Capacity = FarmCatalog.HerbBushCount * FarmCatalog.HerbMaxPerBush;
 
             var assistantGO = CreateAt("AssistantNode", new Vector2(0f, 20f));
             var assistantComp = assistantGO.AddComponent<AssistantNode>();
@@ -159,6 +168,9 @@ namespace MiniMart
             var cowPenGO = CreateAt("CowPen", new Vector2(14f, 24f));
             var cowPenComp = cowPenGO.AddComponent<CowPen>();
             PrimitiveFactory.CowPen(cowPenGO);
+            var cowBadge = cowPenGO.AddComponent<Engine.FarmBadge>();  // owner: farm progress bar
+            cowBadge.Ripe = () => cowPenComp.TotalMilkReady();
+            cowBadge.Capacity = FarmCatalog.MilkMaxPerCow;
 
             var hayTroughGO = CreateAt("HayFeedTrough", new Vector2(14f, 27f));
             var hayTroughComp = hayTroughGO.AddComponent<HayFeedTrough>();

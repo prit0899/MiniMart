@@ -85,6 +85,47 @@ namespace MiniMart.Engine
         }
     }
 
+    /// <summary>Farm chip — owner: show growth progress on every farm. A "ripe/cap"
+    /// readout plus a small fill bar under the chip, so you can see how full a farm is
+    /// and when it's worth harvesting. Driven by a getter set at creation so no farm
+    /// class needs editing (they have divergent internals).</summary>
+    public class FarmBadge : WorldBadge
+    {
+        public System.Func<int> Ripe;   // current ripe/harvestable units
+        public int Capacity = 1;        // max the farm can hold
+
+        private Transform barFill;
+        private const float BarW = 0.5f;
+
+        protected void EnsureBar()
+        {
+            if (barFill != null || chip == null) return;
+            // Track + green fill just under the count chip.
+            PrimitiveFactory.Part(PrimitiveType.Cube, chip.transform,
+                new Vector3(0f, -0.17f, -0.01f), new Vector3(BarW, 0.07f, 0.02f),
+                new Color(0.20f, 0.22f, 0.26f));
+            barFill = PrimitiveFactory.Part(PrimitiveType.Cube, chip.transform,
+                new Vector3(0f, -0.17f, -0.03f), new Vector3(BarW, 0.06f, 0.03f),
+                new Color(0.40f, 0.85f, 0.35f)).transform;
+        }
+
+        protected override void Refresh()
+        {
+            if (Ripe == null || badge == null) return;
+            int r = Ripe();
+            int cap = Mathf.Max(1, Capacity);
+            badge.text = $"{r}/{cap}";
+            Show(true);            // farms are always present — always show the readout
+            EnsureBar();
+            if (barFill != null)
+            {
+                float frac = Mathf.Clamp01((float)r / cap);
+                barFill.localScale = new Vector3(Mathf.Max(0.0001f, BarW * frac), 0.06f, 0.03f);
+                barFill.localPosition = new Vector3(-BarW * 0.5f + BarW * frac * 0.5f, -0.17f, -0.03f);
+            }
+        }
+    }
+
     /// <summary>Hen coop chip — owner found the hen confusing ("how many tomatoes
     /// given vs eggs got?"). Show both counts explicitly, side by side, whenever the
     /// coop holds either: tomatoes eaten-in and eggs ready-out.</summary>
