@@ -63,22 +63,32 @@ and verified in code:**
   decomposition) + A\* + funnel string-pull + Reynolds steering; marker-driven QA
   harness; `DataValidator` **42,710 assertions green** (verified this session).
 
-**Device-readiness (code side) — verified 2026-07-17, all risks a build could
-hit are retired:**
+**Device-readiness (code side) — DONE & PASSED. An actual iOS player build ran
+and succeeded** (`Assets/Scripts/Editor/CIBuild.cs`, triggered interactively via
+`Logs/iosbuild.marker` because batchmode can't clear the license handshake):
+- **Result = Succeeded.** `Build/iOS/` Xcode project produced (`Unity-iPhone.xcodeproj`,
+  `UnityFramework`, `MainApp`); full IL2CPP/AOT conversion (1,258 generated `.cpp`);
+  `ios_build.log` line 10181 `Wrote modifications to Xcode project. OnPostprocessBuild
+  complete.` Verdict archived in `Logs/ios_build_result.txt`. This retires the real
+  IL2CPP/AOT risk the editor's Mono pass never sees.
 - **Touch input works** — `PlayerInputHandler` is touch-first (floating `Joystick`
-  + `Input.GetTouch(0)` tap-to-move) with mouse only as a desktop fallback; the
-  game is *playable* on a phone, not just compilable.
+  + `Input.GetTouch(0)` tap-to-move), mouse only as desktop fallback.
 - **No QA code ships** — `TesterBot` + `WheatShelfExperiment` + marker hooks are
   all `#if UNITY_EDITOR`.
-- **Frame budget** — per-frame-per-agent steering/movement is allocation-free.
-- **iOS target configured** — iPhone+iPad, iOS 15 min, portrait.
+- **Orientation is LANDSCAPE and that is CORRECT** — HUD `referenceResolution`
+  1920×1080; every reference + game capture is landscape. (A prior note here said
+  "portrait" — WRONG, corrected; do NOT flip the orientation.)
 - **DSA documented to standard** — [Architecture.md §6](Architecture.md).
 
-**The ONLY remaining parity item is physically running the build on a real
+**The ONLY remaining item is codesign + provisioning + deploy to a physical
 iPhone** (touch *feel*, thermals, true on-device FPS). That needs a Mac+Xcode
 signed into the owner's Apple account + the owner's device — genuinely
-owner-hardware-blocked, not a code gap. Steps: Unity → Build for iOS → run the
-generated Xcode project on-device; paste any build/runtime error back for a fix.
+owner-hardware-blocked, not a code gap. Steps: open `Build/iOS/Unity-iPhone.xcodeproj`,
+set a signing team, run on-device; paste any build/runtime error back for a fix.
+
+Also wired this session: all five MegaMart machines (Milk Bottler, Corn Processor,
+Coffee Bar, Dairy, Leaf) now appear in the consolidated Upgrades panel's Machines
+tab with split-capacity config — completes the reference Upgrades menu.
 
 **Two things I got wrong last session and corrected here:** I reported the
 MegaMart station economy and the gameplay video as "blocked on owner" without

@@ -55,6 +55,7 @@ namespace MiniMart
         public Machine LeafProcessor;
         public Machine Stove;
         // New map spec (bakery/café + corn chain).
+        public Machine MilkBottler;
         public Machine CornProcessor;
         public Machine CookieStation;
         public Machine CoffeeDispenser;

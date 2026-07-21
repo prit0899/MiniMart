@@ -38,6 +38,19 @@ namespace MiniMart.EditorTools
             // (cost us a full experiment round once).
             if (EditorApplication.isCompiling || EditorApplication.isUpdating) return;
 
+            // iOS build request: run the iOS player build from THIS licensed
+            // interactive editor (batchmode can't get a license handshake). The
+            // build blocks the editor for its duration and writes its verdict to
+            // Logs/ios_build_result.txt.
+            string iosbuild = System.IO.Path.Combine(logs, "iosbuild.marker");
+            if (!EditorApplication.isPlaying && System.IO.File.Exists(iosbuild))
+            {
+                System.IO.File.Delete(iosbuild);
+                Debug.Log("[AutoPlayMarker] iosbuild.marker consumed — building iOS player.");
+                MiniMart.EditorTools.CIBuild.BuildIOSInteractive();
+                return;
+            }
+
             if (!EditorApplication.isPlaying && System.IO.File.Exists(play))
             {
                 System.IO.File.Delete(play);

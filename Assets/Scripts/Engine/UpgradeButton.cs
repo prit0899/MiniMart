@@ -248,6 +248,9 @@ namespace MiniMart.UI
             AddMachineBlock(tabContents[1], "Dairy", RowMachines, font, gm.Dairy);
             AddMachineBlock(tabContents[1], "Egg Stove", RowMachines, font, gm.Stove);
             AddMachineBlock(tabContents[1], "Leaf Unit", RowMachines, font, gm.LeafProcessor);
+            AddMachineBlock(tabContents[1], "Milk Bottler", RowMachines, font, gm.MilkBottler);
+            AddMachineBlock(tabContents[1], "Corn Processor", RowMachines, font, gm.CornProcessor);
+            AddMachineBlock(tabContents[1], "Coffee Bar", RowMachines, font, gm.CoffeeDispenser);
 
             // Animals tab.
             AddCoopBlock(tabContents[2], "Chickens", RowAnimals, font, gm.HenCoop);

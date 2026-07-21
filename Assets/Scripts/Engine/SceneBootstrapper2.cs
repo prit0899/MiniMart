@@ -196,6 +196,21 @@ namespace MiniMart
             PrimitiveFactory.CoffeeDispenser(coffeeGO);
             coffeeGO.AddComponent<MachineBadge>();
 
+            // Owner's Mart-1 station economy, mirrored (spec: every station is
+            // 4-in/4-out with two capacity tracks 4→6→8; same catalog costs —
+            // no new balance numbers invented here).
+            void ConfigStation(Machine m)
+            {
+                m.SplitCapacity = true;
+                m.InputUpgradeCosts = Catalog.StationCatalog.MillInput;
+                m.OutputUpgradeCosts = Catalog.StationCatalog.MillOutput;
+            }
+            ConfigStation(milkBottlerComp);
+            ConfigStation(cornProcComp);
+            ConfigStation(dairyComp);
+            ConfigStation(leafComp);
+            ConfigStation(coffeeComp);
+
             StorageRack MakeRack(Core.ItemType item, Vector2 pos)
             {
                 var go = new GameObject($"Rack_{item}");
@@ -355,6 +370,7 @@ namespace MiniMart
             gmComp.BuyerSpawner = spawnerComp;
             gmComp.TheftManager = theftComp;
             gmComp.PhoneOrderManager = pomComp;
+            gmComp.MilkBottler = milkBottlerComp;
             gmComp.CornProcessor = cornProcComp;
             gmComp.CoffeeDispenser = coffeeComp;
             gmComp.Dairy = dairyComp;
