@@ -51,6 +51,10 @@ namespace MiniMart.AI
         private bool waitingForCounter; // arrived at the tills but none is open yet
         private float shopWait;         // time spent waiting for an out-of-stock item to restock
         private float shopPatienceSeconds;
+        // Owner: buyers commit to a shelf and WAIT for a restock (bubble shows N/M)
+        // rather than leaving. Bounded so a shelf the player never refills eventually
+        // frees the buyer instead of freezing the store.
+        private const float RestockWaitSeconds = 25f;
 
         /// <summary>Real item meshes in the carry stack, same as the player.</summary>
         public override List<ItemType> GetCarriedItems()
@@ -255,13 +259,17 @@ namespace MiniMart.AI
                     return;
                 }
 
+                var it = pickingShelf.Item;
+                bool stillWantThis = Basket.TryGetValue(it, out int want) && want > 0;
+
+                // Finished this item entirely → move on to the next wish.
+                if (!stillWantThis) { pickingShelf = null; return; }
+
                 pickBeat += dt;
                 if (pickBeat < 0.25f) return;
                 pickBeat = 0f;
 
-                var it = pickingShelf.Item;
                 if (pickingShelf.gameObject.activeInHierarchy &&
-                    Basket.TryGetValue(it, out int want) && want > 0 &&
                     pickingShelf.Count > 0 && pickingShelf.TakeStock(1))
                 {
                     Basket[it] = want - 1;
@@ -270,11 +278,26 @@ namespace MiniMart.AI
                     Collected[it] += 1;
                     TryPickUp(1);
                     CarryColor = Engine.PrimitiveFactory.ItemColor(it);
-                    shopWait = 0f; // made progress — reset the restock-wait budget
+                    shopWait = 0f; // got one — reset the restock-wait budget
                 }
                 else
                 {
-                    pickingShelf = null; // line done or shelf ran dry — move on
+                    // Owner: the shelf ran dry but the buyer still wants more of THIS
+                    // item — they STAY and WAIT for a restock (the thought bubble shows
+                    // e.g. 4/5) instead of wandering off. Bounded so a never-restocked
+                    // shelf can't strand them forever (that was the old "statue store").
+                    shopWait += 0.25f; // one beat's worth
+                    if (shopWait >= RestockWaitSeconds)
+                    {
+                        shopWait = 0f;
+                        pickingShelf = null; // waited long enough
+                        if (Collected.Count == 0)
+                        {
+                            LeaveWithoutPaying("waited for a restock that never came");
+                            return;
+                        }
+                        // else: next tick routes to checkout (or other in-stock items)
+                    }
                 }
                 return;
             }
@@ -330,27 +353,29 @@ namespace MiniMart.AI
                         }
                         else
                         {
-                            // Nothing collected yet: browse INSIDE the store near
-                            // the wanted shelf (buyers used to wait frozen at the
-                            // road spawn point, looking like a bug), with a short
-                            // patience budget.
+                            // Nothing collected yet and the wanted item's shelf is
+                            // empty. Owner: walk TO that shelf and WAIT there for a
+                            // restock — committing it as pickingShelf routes into the
+                            // wait-and-show-progress path (bounded by RestockWaitSeconds),
+                            // instead of drifting off looking broken.
                             if (!shownSoldOut)
                             {
                                 shownSoldOut = true;
                                 Engine.Emote.SoldOut(transform.position);
                             }
                             var emptyShelf = FindAnyShelfObject(needed);
-                            if (emptyShelf != null &&
-                                (transform.position - emptyShelf.transform.position).sqrMagnitude > 9f)
+                            if (emptyShelf != null)
                             {
-                                SetTarget(emptyShelf.transform.position +
-                                    new Vector3(Random.Range(-1.5f, 1.5f), 0, Random.Range(-1.5f, 1.5f)));
+                                if (!WithinReach(emptyShelf))
+                                {
+                                    SetTarget(emptyShelf.transform.position);
+                                    return;
+                                }
+                                pickingShelf = emptyShelf; // stand and wait for restock
+                                pickBeat = 0f;
                                 return;
                             }
-                            shopWait += dt;
-                            if (shopWait < shopPatienceSeconds)
-                                return; // brief linger near the shelf
-                            // Waited long enough — give up on the remaining items.
+                            // No shelf for it at all — fall through and leave.
                         }
                     }
                 }

@@ -85,6 +85,25 @@ namespace MiniMart.Engine
         }
     }
 
+    /// <summary>Hen coop chip — owner found the hen confusing ("how many tomatoes
+    /// given vs eggs got?"). Show both counts explicitly, side by side, whenever the
+    /// coop holds either: tomatoes eaten-in and eggs ready-out.</summary>
+    public class HenBadge : WorldBadge
+    {
+        private HenCoop coop;
+        private void Awake() => coop = GetComponent<HenCoop>();
+
+        protected override void Refresh()
+        {
+            if (coop == null || badge == null) return;
+            if (coop.TomatoQueued <= 0 && coop.EggReady <= 0) { Show(false); return; }
+            // "Tom N  Egg M" — plainly separates the input (tomatoes fed) from the
+            // output (eggs laid) so the conversion is legible at a glance.
+            badge.text = $"Tom {coop.TomatoQueued}  Egg {coop.EggReady}";
+            Show(true);
+        }
+    }
+
     /// <summary>Machine chip — hidden when idle-empty, shown as "IN n" while working
     /// or "OUT n" when output is ready to collect. Never the reference's "in 0/4 out 0"
     /// clutter that stayed visible over every idle appliance.</summary>

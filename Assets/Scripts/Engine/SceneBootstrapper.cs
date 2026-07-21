@@ -214,6 +214,7 @@ namespace MiniMart
             var henCoopGO = CreateAt("HenCoop", new Vector2(5f, 24f));
             var henCoopComp = henCoopGO.AddComponent<HenCoop>();
             PrimitiveFactory.HenCoop(henCoopGO);
+            henCoopGO.AddComponent<Engine.HenBadge>(); // owner: show tomatoes-in / eggs-out
 
             var cowPenGO = CreateAt("CowPen", new Vector2(-17f, 20f));   // retired in Mart 1
             var cowPenComp = cowPenGO.AddComponent<CowPen>();

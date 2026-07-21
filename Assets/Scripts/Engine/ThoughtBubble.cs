@@ -5,17 +5,23 @@ using MiniMart.Core;
 namespace MiniMart.Engine
 {
     /// <summary>
-    /// Reference-parity thought bubble: a white rounded speech bubble with just a
-    /// colored item icon inside — no text. Reference "My Mini Mart" bubbles are
-    /// icon-only (a tomato chip means 'wants tomatoes'). While queueing at the
-    /// till the bubble swaps the icon for a laptop/cash symbol.
+    /// Reference-parity thought bubble: a white rounded speech bubble with the
+    /// current wanted item's colored icon, a "have/want" count, and a progress bar
+    /// under the bubble (owner: show 4/5 while a buyer waits for the 5th). When the
+    /// current item is fully collected the bubble advances to the next wish; while
+    /// queueing at the till it swaps to a register icon.
     /// </summary>
     public class ThoughtBubble : MonoBehaviour
     {
+        private const float BarW = 0.62f;
+
         private Buyer buyer;
         private GameObject root;
         private MeshRenderer iconRenderer;
         private MeshRenderer queueIconRenderer;
+        private TextMesh countText;
+        private GameObject barBg;
+        private GameObject barFill;
         private float timer;
 
         private void Start()
@@ -37,25 +43,59 @@ namespace MiniMart.Engine
                 new Vector3(-0.22f, -0.35f, 0f), new Vector3(0.18f, 0.18f, 0.05f), new Color(1f, 1f, 1f, 1f));
             tail.name = "Tail";
 
-            // Item chip — square colored icon centered in the bubble.
+            // Item chip — square colored icon, upper half of the bubble.
             var icon = PrimitiveFactory.Part(PrimitiveType.Cube, root.transform,
-                new Vector3(0f, 0f, -0.06f), new Vector3(0.38f, 0.38f, 0.05f), Color.white);
+                new Vector3(0f, 0.12f, -0.06f), new Vector3(0.34f, 0.34f, 0.05f), Color.white);
             icon.name = "Icon";
             iconRenderer = icon.GetComponent<MeshRenderer>();
 
-            // Alternate icon for queueing: dark 'laptop/register' rectangle. Kept
-            // as a separate object so we can toggle without recoloring the same mesh.
+            // "have/want" count under the icon.
+            var countGO = new GameObject("Count");
+            countGO.transform.SetParent(root.transform, false);
+            countGO.transform.localPosition = new Vector3(0f, -0.14f, -0.07f);
+            countText = countGO.AddComponent<TextMesh>();
+            countText.fontSize = 60;
+            countText.characterSize = 0.016f;
+            countText.anchor = TextAnchor.MiddleCenter;
+            countText.alignment = TextAlignment.Center;
+            countText.color = new Color(0.15f, 0.15f, 0.15f);
+            var font = HUDBuilder.UIFont;
+            if (font != null)
+            {
+                countText.font = font;
+                var mr = countGO.GetComponent<MeshRenderer>();
+                if (mr != null) mr.material = font.material;
+            }
+
+            // Progress bar just under the bubble: dark track + green fill.
+            barBg = PrimitiveFactory.Part(PrimitiveType.Cube, root.transform,
+                new Vector3(0f, -0.5f, -0.06f), new Vector3(BarW, 0.12f, 0.04f),
+                new Color(0.20f, 0.22f, 0.26f));
+            barBg.name = "BarBg";
+            barFill = PrimitiveFactory.Part(PrimitiveType.Cube, root.transform,
+                new Vector3(0f, -0.5f, -0.08f), new Vector3(BarW, 0.10f, 0.05f),
+                new Color(0.40f, 0.85f, 0.35f));
+            barFill.name = "BarFill";
+
+            // Alternate icon for queueing: dark 'register' rectangle.
             var qIcon = PrimitiveFactory.Part(PrimitiveType.Cube, root.transform,
-                new Vector3(0f, 0f, -0.06f), new Vector3(0.42f, 0.28f, 0.05f), new Color(0.18f, 0.20f, 0.24f));
+                new Vector3(0f, 0.05f, -0.06f), new Vector3(0.42f, 0.28f, 0.05f), new Color(0.18f, 0.20f, 0.24f));
             qIcon.name = "QueueIcon";
             queueIconRenderer = qIcon.GetComponent<MeshRenderer>();
             qIcon.SetActive(false);
         }
 
+        private void SetProgressVisible(bool on)
+        {
+            if (countText != null) countText.gameObject.SetActive(on);
+            if (barBg != null) barBg.SetActive(on);
+            if (barFill != null) barFill.SetActive(on);
+        }
+
         private void Update()
         {
             timer += Time.deltaTime;
-            if (timer < 0.25f) return;
+            if (timer < 0.2f) return;
             timer = 0f;
             if (buyer == null || root == null) return;
 
@@ -65,20 +105,27 @@ namespace MiniMart.Engine
                 return;
             }
 
-            // Queueing: swap to the laptop/register icon (reference behavior).
+            // Queueing: swap to the register icon, hide the shopping progress.
             if (buyer.InQueue)
             {
                 root.SetActive(true);
                 if (iconRenderer != null) iconRenderer.gameObject.SetActive(false);
                 if (queueIconRenderer != null) queueIconRenderer.gameObject.SetActive(true);
+                SetProgressVisible(false);
                 return;
             }
 
-            // First outstanding wish → colored item chip only, no text.
+            // Current outstanding wish → colored chip + "have/want" + progress bar.
             foreach (var kv in buyer.Basket)
             {
                 if (kv.Value <= 0) continue;
                 ItemType item = kv.Key;
+
+                int total = buyer.OriginalWant.TryGetValue(item, out int w) ? w : kv.Value;
+                int have = buyer.Collected.TryGetValue(item, out int c) ? c : 0;
+                if (total < 1) total = 1;
+                float frac = Mathf.Clamp01((float)have / total);
+
                 root.SetActive(true);
                 if (queueIconRenderer != null) queueIconRenderer.gameObject.SetActive(false);
                 if (iconRenderer != null)
@@ -86,11 +133,17 @@ namespace MiniMart.Engine
                     iconRenderer.gameObject.SetActive(true);
                     iconRenderer.material.color = PrimitiveFactory.ItemColor(item);
                 }
+                SetProgressVisible(true);
+                if (countText != null) countText.text = $"{have}/{total}";
+                if (barFill != null)
+                {
+                    barFill.transform.localScale = new Vector3(Mathf.Max(0.0001f, BarW * frac), 0.10f, 0.05f);
+                    barFill.transform.localPosition = new Vector3(-BarW * 0.5f + BarW * frac * 0.5f, -0.5f, -0.08f);
+                }
                 return;
             }
 
-            // Wish list complete, but not queued yet — hide the bubble entirely
-            // (reference doesn't show anything during the short walk to the till).
+            // Wish list complete, not queued yet — hide the bubble during the walk to the till.
             root.SetActive(false);
         }
     }
