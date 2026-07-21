@@ -179,6 +179,10 @@ namespace MiniMart
             // (Removed the red-white striped gate near Counter 1 — owner found it
             // meaningless decoration; it read as part of the till.)
 
+            // Reference parity: red waste bins dotted along the shop floor (decor).
+            PrimitiveFactory.TrashBin(new Vector3(8f, 0, 58.5f));
+            PrimitiveFactory.TrashBin(new Vector3(-18f, 0, 58.5f));
+
             // Pathfinder covers the enlarged 100 x 82 world (extra breadth for the
             // wider road + tree perimeter push to Z=82).
             var pfGO = new GameObject("Pathfinder");

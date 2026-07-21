@@ -114,6 +114,10 @@ namespace MiniMart
             PrimitiveFactory.Wall("Wall_East_2", new Vector3(20f, 0, 50f),    new Vector3(0.3f, 0.85f, 8f));
             PrimitiveFactory.Wall("Wall_East_3", new Vector3(20f, 0, 58f),    new Vector3(0.3f, 0.85f, 4f));
 
+            // Reference parity: red waste bins dotted along the shop floor (decor).
+            PrimitiveFactory.TrashBin(new Vector3(12f, 0, 58.5f));
+            PrimitiveFactory.TrashBin(new Vector3(-16f, 0, 58.5f));
+
             var pfGO = new GameObject("Pathfinder");
             var pfComp = pfGO.AddComponent<GridPathfinder>();
             pfComp.GridOrigin = new Vector3(-40f, 0, 0f);

@@ -924,6 +924,23 @@ namespace MiniMart.Engine
                 new Vector3(3.2f, 0.012f, 5.6f), GRASS);
         }
 
+        /// <summary>Small red waste bin — decorative store prop matching the
+        /// reference's red bins dotted along the shop floor. Purely cosmetic; not
+        /// stamped into the walk grid so it never blocks a path.</summary>
+        public static void TrashBin(Vector3 pos)
+        {
+            var red  = new Color(0.86f, 0.26f, 0.24f);
+            var dark = new Color(0.12f, 0.12f, 0.14f);
+            var root = new GameObject("TrashBin");
+            root.transform.position = pos;
+            Part(PrimitiveType.Cube, root.transform, new Vector3(0f, 0.35f, 0f),
+                new Vector3(0.68f, 0.70f, 0.68f), red);                       // body
+            Part(PrimitiveType.Cube, root.transform, new Vector3(0f, 0.72f, 0f),
+                new Vector3(0.78f, 0.06f, 0.78f), dark);                      // rim
+            Part(PrimitiveType.Cube, root.transform, new Vector3(0f, 0.70f, 0f),
+                new Vector3(0.58f, 0.05f, 0.58f), new Color(0.05f, 0.05f, 0.06f)); // opening
+        }
+
         /// <summary>Red-white candy-striped angled barrier at the store's west
         /// entrance, per reference "how buyer spawn.png". Purely decorative.</summary>
         public static void StripedGate(Vector3 basePos, float length = 5f)
