@@ -137,6 +137,7 @@ namespace MiniMart
             var cornBadge = cornFieldGO.AddComponent<Engine.FarmBadge>();  // owner: farm progress bar
             cornBadge.Ripe = () => cornFieldComp.TotalRipe();
             cornBadge.Capacity = FarmCatalog.CornStalkCount * FarmCatalog.CornMaxPerStalk;
+            cornBadge.IconColor = PrimitiveFactory.ItemColor(Core.ItemType.Corn);
 
             var appleOrchardGO = CreateAt("AppleOrchard", new Vector2(-15f, 24f));
             var appleOrchardComp = appleOrchardGO.AddComponent<AppleOrchard>();
@@ -144,6 +145,7 @@ namespace MiniMart
             var appleBadge = appleOrchardGO.AddComponent<Engine.FarmBadge>();
             appleBadge.Ripe = () => appleOrchardComp.TotalRipe();
             appleBadge.Capacity = FarmCatalog.AppleTreeCount * FarmCatalog.AppleMaxPerTree;
+            appleBadge.IconColor = PrimitiveFactory.ItemColor(Core.ItemType.Apple);
 
             var herbPatchGO = CreateAt("HerbPatch", new Vector2(4f, 24f));
             var herbPatchComp = herbPatchGO.AddComponent<HerbPatch>();
@@ -151,6 +153,7 @@ namespace MiniMart
             var herbBadge = herbPatchGO.AddComponent<Engine.FarmBadge>();
             herbBadge.Ripe = () => herbPatchComp.TotalRipe();
             herbBadge.Capacity = FarmCatalog.HerbBushCount * FarmCatalog.HerbMaxPerBush;
+            herbBadge.IconColor = PrimitiveFactory.ItemColor(Core.ItemType.Herb);
 
             var assistantGO = CreateAt("AssistantNode", new Vector2(0f, 20f));
             var assistantComp = assistantGO.AddComponent<AssistantNode>();
@@ -171,6 +174,7 @@ namespace MiniMart
             var cowBadge = cowPenGO.AddComponent<Engine.FarmBadge>();  // owner: farm progress bar
             cowBadge.Ripe = () => cowPenComp.TotalMilkReady();
             cowBadge.Capacity = FarmCatalog.MilkMaxPerCow;
+            cowBadge.IconColor = PrimitiveFactory.ItemColor(Core.ItemType.Milk);
 
             var hayTroughGO = CreateAt("HayFeedTrough", new Vector2(14f, 27f));
             var hayTroughComp = hayTroughGO.AddComponent<HayFeedTrough>();

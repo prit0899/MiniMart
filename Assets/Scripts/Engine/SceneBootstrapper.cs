@@ -246,6 +246,7 @@ namespace MiniMart
             var tfBadge = tomatoFarmGO.AddComponent<Engine.FarmBadge>();  // owner: farm progress bar
             tfBadge.Ripe = () => tomatoFarmComp.TotalRipe();
             tfBadge.Capacity = Catalog.FarmCatalog.TomatoPlantCount * Catalog.FarmCatalog.TomatoMaxPerPlant;
+            tfBadge.IconColor = PrimitiveFactory.ItemColor(Core.ItemType.Tomato);
 
             var wheatFarmGO = CreateAt("WheatFarm", new Vector2(-5f, 25f));
             var wheatFarmComp = wheatFarmGO.AddComponent<WheatFarm>();
@@ -253,6 +254,7 @@ namespace MiniMart
             var wfBadge = wheatFarmGO.AddComponent<Engine.FarmBadge>();
             wfBadge.Ripe = () => wheatFarmComp.ReadyCount();
             wfBadge.Capacity = Catalog.FarmCatalog.WheatBoxCount * Catalog.FarmCatalog.WheatMaxPerBox;
+            wfBadge.IconColor = PrimitiveFactory.ItemColor(Core.ItemType.Wheat);
 
 
 

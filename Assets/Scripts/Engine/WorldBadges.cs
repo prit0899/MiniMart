@@ -97,12 +97,29 @@ namespace MiniMart.Engine
     public class FarmBadge : WorldBadge
     {
         protected override float TextCharSize => 0.034f;  // owner: legible ripe count
+        // Wider chip to fit the reference-style [item icon] + count layout.
+        protected override Vector2 ChipSize => new Vector2(0.72f, 0.22f);
 
-        public System.Func<int> Ripe;   // current ripe/harvestable units
-        public int Capacity = 1;        // max the farm can hold
+        public System.Func<int> Ripe;    // current ripe/harvestable units
+        public int Capacity = 1;         // max the farm can hold
+        public Color IconColor = Color.white;  // crop color chip (reference: icon + count)
 
         private Transform barFill;
-        private const float BarW = 0.5f;
+        private bool iconMade;
+        private const float BarW = 0.55f;
+
+        // Reference badges read as "[colored crop icon] N/cap". Add a small colored
+        // square at the left and left-align the count beside it.
+        protected void EnsureIcon()
+        {
+            if (iconMade || chip == null || badge == null) return;
+            iconMade = true;
+            PrimitiveFactory.Part(PrimitiveType.Cube, chip.transform,
+                new Vector3(-0.26f, 0.02f, -0.02f), new Vector3(0.16f, 0.16f, 0.03f), IconColor);
+            badge.anchor = TextAnchor.MiddleLeft;
+            badge.alignment = TextAlignment.Left;
+            badge.transform.localPosition = new Vector3(-0.13f, 0.02f, -0.02f);
+        }
 
         protected void EnsureBar()
         {
@@ -123,6 +140,7 @@ namespace MiniMart.Engine
             int cap = Mathf.Max(1, Capacity);
             badge.text = $"{r}/{cap}";
             Show(true);            // farms are always present — always show the readout
+            EnsureIcon();
             EnsureBar();
             if (barFill != null)
             {
