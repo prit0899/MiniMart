@@ -17,6 +17,11 @@ namespace MiniMart.Engine
         protected GameObject chip;         // dark tag backboard
         private float timer;
 
+        // Overridable so the owner-requested readouts (hen, farm) can be a touch
+        // larger/wider than the compact storage & machine chips.
+        protected virtual float TextCharSize => 0.03f;
+        protected virtual Vector2 ChipSize => new Vector2(0.55f, 0.22f);
+
         private void Start()
         {
             // Compact reference-style pill: a small dark chip with tiny white text
@@ -29,7 +34,7 @@ namespace MiniMart.Engine
 
             // Chip background — dark rounded pill.
             PrimitiveFactory.Part(PrimitiveType.Cube, chip.transform,
-                Vector3.zero, new Vector3(0.55f, 0.22f, 0.02f),
+                Vector3.zero, new Vector3(ChipSize.x, ChipSize.y, 0.02f),
                 new Color(0.18f, 0.18f, 0.22f, 1f));
 
             var textGO = new GameObject("Text");
@@ -37,7 +42,7 @@ namespace MiniMart.Engine
             textGO.transform.localPosition = new Vector3(0f, 0f, -0.02f);
             badge = textGO.AddComponent<TextMesh>();
             badge.fontSize = 48;
-            badge.characterSize = 0.03f;
+            badge.characterSize = TextCharSize;
             badge.anchor = TextAnchor.MiddleCenter;
             badge.alignment = TextAlignment.Center;
             badge.color = Color.white;
@@ -91,6 +96,8 @@ namespace MiniMart.Engine
     /// class needs editing (they have divergent internals).</summary>
     public class FarmBadge : WorldBadge
     {
+        protected override float TextCharSize => 0.034f;  // owner: legible ripe count
+
         public System.Func<int> Ripe;   // current ripe/harvestable units
         public int Capacity = 1;        // max the farm can hold
 
@@ -131,6 +138,10 @@ namespace MiniMart.Engine
     /// coop holds either: tomatoes eaten-in and eggs ready-out.</summary>
     public class HenBadge : WorldBadge
     {
+        // Bigger + wider than the compact machine chip so "Tom N  Egg M" is legible.
+        protected override float TextCharSize => 0.036f;
+        protected override Vector2 ChipSize => new Vector2(0.95f, 0.24f);
+
         private HenCoop coop;
         private void Awake() => coop = GetComponent<HenCoop>();
 

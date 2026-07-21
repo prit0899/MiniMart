@@ -55,7 +55,7 @@ namespace MiniMart.Engine
             countGO.transform.localPosition = new Vector3(0f, -0.14f, -0.07f);
             countText = countGO.AddComponent<TextMesh>();
             countText.fontSize = 60;
-            countText.characterSize = 0.016f;
+            countText.characterSize = 0.021f;
             countText.anchor = TextAnchor.MiddleCenter;
             countText.alignment = TextAlignment.Center;
             countText.color = new Color(0.15f, 0.15f, 0.15f);
