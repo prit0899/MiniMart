@@ -64,12 +64,22 @@ namespace MiniMart.Engine
         private static void ApplyCloseArt(Button btn, Text label)
         {
             var art = PackSprite("btn_close");
-            if (art == null) return;
-            var img = btn.GetComponent<Image>();
-            img.sprite = art;
-            img.type = Image.Type.Simple;
-            img.color = Color.white;
-            if (label != null) label.text = ""; // art already draws the X
+            if (art != null)
+            {
+                var img = btn.GetComponent<Image>();
+                img.sprite = art;
+                img.type = Image.Type.Simple;
+                img.color = Color.white;
+            }
+            // B5: the btn_close art carries no visible glyph, so clearing the label
+            // left a blank square. Always keep a bold white "X" drawn on top.
+            if (label != null)
+            {
+                label.text = "X";
+                label.color = Color.white;
+                label.fontStyle = FontStyle.Bold;
+                label.fontSize = 30;
+            }
         }
 
         private static Sprite circleSprite;

@@ -77,20 +77,50 @@ namespace MiniMart.UI
             var eco = GameManager.Instance?.Economy;
             if (eco == null) return;
 
-            // Setup a vertical layout for the rows
-            var vlg = gameObject.AddComponent<VerticalLayoutGroup>();
+            // B4: the rows used to be dumped straight on the panel with a
+            // VerticalLayoutGroup, so ~18 rows ran off the bottom of the device with
+            // no way to scroll. Wrap them in a ScrollRect (viewport + content) inset
+            // inside the panel below the title bar, with a RectMask2D clip.
+            var viewportGO = new GameObject("Viewport", typeof(RectTransform), typeof(Image), typeof(RectMask2D));
+            viewportGO.transform.SetParent(transform, false);
+            var vpRt = viewportGO.GetComponent<RectTransform>();
+            vpRt.anchorMin = Vector2.zero;
+            vpRt.anchorMax = Vector2.one;
+            vpRt.offsetMin = new Vector2(14, 14);
+            vpRt.offsetMax = new Vector2(-14, -84);          // clear the title bar
+            viewportGO.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.001f); // raycast target only
+
+            var contentGO = new GameObject("Content", typeof(RectTransform));
+            contentGO.transform.SetParent(viewportGO.transform, false);
+            var contentRt = contentGO.GetComponent<RectTransform>();
+            contentRt.anchorMin = new Vector2(0, 1);
+            contentRt.anchorMax = new Vector2(1, 1);
+            contentRt.pivot = new Vector2(0.5f, 1f);
+            contentRt.anchoredPosition = Vector2.zero;
+
+            var vlg = contentGO.AddComponent<VerticalLayoutGroup>();
             vlg.childAlignment = TextAnchor.UpperCenter;
             vlg.spacing = 10;
-            vlg.padding = new RectOffset(14, 14, 90, 14); // clear the title bar
+            vlg.padding = new RectOffset(4, 4, 4, 4);
             vlg.childControlHeight = false;
             vlg.childControlWidth = true;
+            var fitter = contentGO.AddComponent<ContentSizeFitter>();
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            var scroll = gameObject.AddComponent<ScrollRect>();
+            scroll.viewport = vpRt;
+            scroll.content = contentRt;
+            scroll.horizontal = false;
+            scroll.vertical = true;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            scroll.scrollSensitivity = 24f;
 
             var font = Engine.HUDBuilder.UIFont;
 
             foreach (ItemType item in System.Enum.GetValues(typeof(ItemType)))
             {
                 var rowGO = new GameObject($"PriceRow_{item}", typeof(RectTransform));
-                rowGO.transform.SetParent(transform, false);
+                rowGO.transform.SetParent(contentGO.transform, false);
                 var rowRt = rowGO.GetComponent<RectTransform>();
                 rowRt.sizeDelta = new Vector2(0, 60);
 
@@ -177,6 +207,19 @@ namespace MiniMart.UI
                 
                 toggle.targetGraphic = toggleBgImg;
                 toggle.graphic = toggleCheckImg;
+
+                // B5: the toggle was an unlabeled dark square. Add a "%" glyph so it
+                // reads as the discount/offer control.
+                var pctGO = new GameObject("Pct", typeof(RectTransform));
+                pctGO.transform.SetParent(toggleBgGO.transform, false);
+                SetAnchored(pctGO.GetComponent<RectTransform>(), Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+                var pctTxt = pctGO.AddComponent<Text>();
+                pctTxt.text = "%";
+                pctTxt.font = font;
+                pctTxt.color = Color.white;
+                pctTxt.fontStyle = FontStyle.Bold;
+                pctTxt.alignment = TextAnchor.MiddleCenter;
+                pctTxt.raycastTarget = false;
 
                 // Offer Label
                 var offerGO = new GameObject("OfferText", typeof(RectTransform));

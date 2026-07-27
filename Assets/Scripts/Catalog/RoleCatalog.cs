@@ -36,10 +36,14 @@ namespace MiniMart.Catalog
             new[] { 0, 50, 150, 300, 600});
 
         // ---- Shelver 1 & 2: stack 3 -> 5 over 5 levels, speed rises every upgrade. ----
+        // Playtest balance: the top ranks were $200/$500 — too cheap to be an
+        // endgame goal, so a maxed store sat on a big cash surplus with nothing
+        // worth buying. Early ranks are UNCHANGED (early pacing was fine); only the
+        // L4/L5 costs rise, turning "max every worker" into a real late-game sink.
         public static UpgradeCurve Shelver1Curve() => Build(
             new[] { 3, 4, 5, 6, 7},
             new[] { 1.0f, 1.15f, 1.3f, 1.45f, 1.6f },
-            new[] { 0, 50, 100, 200, 500 });
+            new[] { 0, 50, 150, 400, 1000 });
 
         public static UpgradeCurve Shelver2Curve() => Shelver1Curve();
 
@@ -47,13 +51,13 @@ namespace MiniMart.Catalog
         public static UpgradeCurve ChefCurve() => Build(
             new[] { 3, 4, 5, 6, 7 },
             new[] { 1.0f, 1.15f, 1.3f, 1.45f, 1.6f },
-            new[] { 0, 200, 500, 1000, 2000 });
+            new[] { 0, 200, 600, 1500, 3500 });
 
         // ---- Farmer: manages hens, wheat, tomato — chef stats, mid-tier cost. ----
         public static UpgradeCurve FarmerCurve() => Build(
             new[] { 3, 4, 5, 6, 7 },
             new[] { 1.0f, 1.15f, 1.3f, 1.45f, 1.6f },
-            new[] { 0, 100, 200, 500, 1000 });
+            new[] { 0, 100, 250, 700, 1800 });
 
         /// <summary>What each shelver role is responsible for stocking, per spec Section 1.</summary>
         public static readonly Dictionary<RoleType, ItemType[]> RoleResponsibilities = new Dictionary<RoleType, ItemType[]>

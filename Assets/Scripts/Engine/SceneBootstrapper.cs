@@ -736,7 +736,11 @@ namespace MiniMart
             void Locator(GameObject source, Core.ItemType item)
             {
                 if (source == null) return;
-                var icon = PrimitiveFactory.ItemMesh(item, source.transform, new Vector3(0, 3.4f, 0), 3.5f);
+                // B6: at scale 3.5 / height 3.4 this read as a stray, shadowless
+                // "oversized egg" glitch rather than a marker. With the camera now
+                // clamped to the building (B1), a smaller icon sitting closer to its
+                // source reads clearly as "this station is here".
+                var icon = PrimitiveFactory.ItemMesh(item, source.transform, new Vector3(0, 2.6f, 0), 2.0f);
                 icon.name = $"Locator_{item}";
                 icon.AddComponent<LocatorBob>();
             }
