@@ -402,7 +402,11 @@ namespace MiniMart
             int tomatoes = DepositUpToCap(ItemType.Tomato, (int)(seconds / 45));
             int wheat    = DepositUpToCap(ItemType.Wheat,  (int)(seconds / 60));
 
-            float coins = Mathf.Round(Mathf.Min((float)seconds / 60f, 240f) * 0.3f * StoreLevel);
+            // Playtest balance: at 0.3×level a 4h/L10 idle paid $720 while only ~3
+            // goods (storage-capped) actually accrued — the cash read as a jackpot
+            // decoupled from production. Moderated to 0.18× so offline income tracks
+            // effort more honestly (4h/L10 ≈ $432).
+            float coins = Mathf.Round(Mathf.Min((float)seconds / 60f, 240f) * 0.18f * StoreLevel);
             Economy.Deposit(coins);
 
             var sb = new System.Text.StringBuilder();

@@ -25,6 +25,10 @@ namespace MiniMart.AI
         public float MinInterval = 4f;
         public float MaxInterval = 7f;
         public float LevelScaleFactor = 0.75f; // each store level speeds spawns by 25%
+        // B2: hard floor on the spawn interval so high-level scaling can't produce a
+        // flood a base-rate store can't restock against (~1.5s ≈ a busy but
+        // serviceable queue at L10).
+        public float MinSpawnInterval = 1.5f;
         public int MaxConcurrentBuyers = 12;   // absolute cap per TDD 15
 
         /// <summary>Effective crowd cap grows with the store: 6 at L1 up to 12.</summary>
@@ -61,7 +65,12 @@ namespace MiniMart.AI
             // GDD 8.3: an active discount (>=10%) pulls in +50% more customers.
             var eco = GameManager.Instance?.Economy;
             if (eco != null && eco.AnyDiscountActive()) scale *= 0.67f;
-            nextSpawn = Random.Range(MinInterval, MaxInterval) * scale;
+            // Playtest B2: unclamped, 0.75^9 at L10 spawned a buyer every ~0.4s — a
+            // flood a base-rate store can't restock against, so shelves emptied and
+            // customers walked out. Floor the interval so demand can't outrun supply
+            // (buyers also now wait for restock, so a steady stream keeps the store
+            // busy without starving it).
+            nextSpawn = Mathf.Max(MinSpawnInterval, Random.Range(MinInterval, MaxInterval) * scale);
             timer = 0f;
         }
 

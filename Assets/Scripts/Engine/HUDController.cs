@@ -83,10 +83,11 @@ namespace MiniMart.UI
             CloseSettingsButton?.onClick.AddListener(OnCloseSettings);
             if (VolumeSlider != null)
                 VolumeSlider.onValueChanged.AddListener(v => AudioListener.volume = Mathf.Clamp01(v));
-            // Only one center panel at a time — opening one closes the other.
-            OpenPricePanelButton?.onClick.AddListener(() => { UpgradePanel?.SetActive(false); PricePanel?.SetActive(true); });
+            // B3: exactly ONE center panel at a time. Every open routes through
+            // CloseAllCenterPanels() first, so Settings can't draw over Pricing, etc.
+            OpenPricePanelButton?.onClick.AddListener(() => { CloseAllCenterPanels(); PricePanel?.SetActive(true); });
             ClosePricePanelButton?.onClick.AddListener(() => PricePanel?.SetActive(false));
-            OpenUpgradePanelButton?.onClick.AddListener(() => { PricePanel?.SetActive(false); UpgradePanel?.SetActive(true); });
+            OpenUpgradePanelButton?.onClick.AddListener(() => { CloseAllCenterPanels(); UpgradePanel?.SetActive(true); });
             CloseUpgradePanelButton?.onClick.AddListener(() => UpgradePanel?.SetActive(false));
             // Owner: phone orders are fulfilled by physically carrying the items to
             // the van (PlayerInteraction loads it on contact) — NOT by a Collect
@@ -228,8 +229,22 @@ namespace MiniMart.UI
             // Reference gear icon opens SETTINGS (which soft-pauses the sim);
             // Resume closes the whole overlay. Both keep the pause overlay OFF
             // — the settings panel itself is the visual "pause" state.
+            CloseAllCenterPanels();   // B3: never stack over Pricing/Upgrades
             gm?.Pause();
             SettingsPanel?.SetActive(true);
+        }
+
+        /// <summary>B3: close every center panel before opening a new one. Resumes
+        /// the sim if Settings (which soft-pauses) was the one open.</summary>
+        private void CloseAllCenterPanels()
+        {
+            if (SettingsPanel != null && SettingsPanel.activeSelf)
+            {
+                SettingsPanel.SetActive(false);
+                gm?.Resume();
+            }
+            PricePanel?.SetActive(false);
+            UpgradePanel?.SetActive(false);
         }
 
         private void OnCloseSettings()

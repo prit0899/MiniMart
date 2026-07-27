@@ -785,6 +785,12 @@ namespace MiniMart.Engine
                     new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
                     new[] { new GradientAlphaKey(0.5f, 0f), new GradientAlphaKey(0f, 1f) });
                 col.color = grad;
+                // B8: also animate SIZE over lifetime — a puff that grows as it fades
+                // reads as dissipating smoke instead of a static hard quad.
+                var sol = ps.sizeOverLifetime;
+                sol.enabled = true;
+                sol.size = new ParticleSystem.MinMaxCurve(
+                    1f, new AnimationCurve(new Keyframe(0f, 0.5f), new Keyframe(1f, 1.3f)));
                 var renderer = ps.GetComponent<ParticleSystemRenderer>();
                 renderer.material = NewParticleMaterial();
             }

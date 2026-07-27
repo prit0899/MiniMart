@@ -35,6 +35,11 @@ namespace MiniMart.Engine
 
         private void Update()
         {
+            // B9: refresh the NET button BEFORE the pause gate — otherwise, when a
+            // panel is open (paused) as a thief leaves/is caught, the button never
+            // re-hides and lingers on screen after the event resolved.
+            UpdateNetButtonVisibility();
+
             if (player == null || player.IsPaused) return;
 
             if (mainCam == null)
@@ -42,7 +47,6 @@ namespace MiniMart.Engine
 
             HandleKeyboardMovement();
             HandleTapToMove();
-            UpdateNetButtonVisibility();
         }
 
         // GDD 11: the NET button only appears while a thief is actually loose in the store.

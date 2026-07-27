@@ -130,8 +130,10 @@ namespace MiniMart.Engine
 
         private static readonly Color PanelColor  = new Color(0.10f, 0.12f, 0.16f, 0.92f);
         // Reference-style bright green shell for the big center panels (My Mini Mart look).
-        private static readonly Color GreenShell  = new Color(0.45f, 0.76f, 0.32f, 0.98f);
-        private static readonly Color PurpleShell = new Color(0.72f, 0.60f, 0.95f, 0.98f); // reference settings shell
+        // B7: fully opaque modal shells — at 0.98 the perimeter wall showed through
+        // behind the Pricing rows. Modal panels should never be see-through.
+        private static readonly Color GreenShell  = new Color(0.45f, 0.76f, 0.32f, 1f);
+        private static readonly Color PurpleShell = new Color(0.72f, 0.60f, 0.95f, 1f); // reference settings shell
         private static readonly Color AccentColor = new Color(0.20f, 0.60f, 0.95f, 1f);
         private static readonly Color GreenColor  = new Color(0.20f, 0.70f, 0.30f, 1f);
         private static readonly Color RedColor    = new Color(0.85f, 0.25f, 0.25f, 1f);
@@ -340,7 +342,9 @@ namespace MiniMart.Engine
             // Empty screen space still reaches it, so the floating joystick keeps working.
             touchZone.rectTransform.SetAsFirstSibling();
 
-            var joyBg = NewPanel("JoystickBackground", touchZone.transform, new Color(1f, 1f, 1f, 0.35f));
+            // Playtest: near-white at 0.35 alpha was barely visible on the cream floor.
+            // Cooler tint + higher alpha so the joystick base reads while in use.
+            var joyBg = NewPanel("JoystickBackground", touchZone.transform, new Color(0.82f, 0.86f, 0.95f, 0.6f));
             var bgRt = joyBg.rectTransform;
             SetAnchored(bgRt, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(250, 250));
             joyBg.sprite = CircleSprite; // true circle, like the reference joystick

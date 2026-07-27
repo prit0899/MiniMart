@@ -83,6 +83,11 @@ namespace MiniMart
             // Camera follow
             camFollow = camGO.GetComponent<CameraFollow>() ?? camGO.AddComponent<CameraFollow>();
             camFollow.offset = new Vector3(-8f, 14f, -8f);
+            // B1: keep the camera focus inside the building (Mart 1 spans x[-20,10]
+            // z[14,60]); inset so edges never show empty grass/road.
+            camFollow.useBounds = true;
+            camFollow.minBounds = new Vector2(-17f, 20f);
+            camFollow.maxBounds = new Vector2(7f, 54f);
         }
 
         private void Start()

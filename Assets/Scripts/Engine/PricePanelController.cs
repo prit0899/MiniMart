@@ -62,7 +62,10 @@ namespace MiniMart.UI
 
         private void RefreshDisplay(float price)
         {
-            if (PriceText != null) PriceText.text = $"${price:F2}";
+            // Genre convention (and the reference) show whole-dollar prices — "$3",
+            // not "$3.00"; only show cents when the price actually has them.
+            if (PriceText != null)
+                PriceText.text = price == Mathf.Round(price) ? $"${price:F0}" : $"${price:F2}";
         }
     }
 

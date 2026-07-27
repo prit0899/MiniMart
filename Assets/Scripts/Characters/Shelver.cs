@@ -209,20 +209,35 @@ namespace MiniMart.Characters
             var go = new GameObject("StockBadge");
             go.transform.SetParent(transform, false);
             go.transform.localPosition = new Vector3(0, 2.4f, 0);
-            badge = go.AddComponent<TextMesh>();
+            go.AddComponent<Billboard>();
+
+            // Playtest legibility fix: the stock count was plain white TextMesh, which
+            // was near-invisible on the cream shop floor. Standardise on the dark chip
+            // used by machine/farm badges, and add an item-color icon (reference: a
+            // shelf badge shows WHAT it sells, so an empty shelf still reads).
+            Engine.PrimitiveFactory.Part(PrimitiveType.Cube, go.transform,
+                new Vector3(0f, 0f, 0.02f), new Vector3(0.74f, 0.28f, 0.02f),
+                new Color(0.18f, 0.18f, 0.22f));                                  // dark chip
+            Engine.PrimitiveFactory.Part(PrimitiveType.Cube, go.transform,
+                new Vector3(-0.27f, 0f, -0.01f), new Vector3(0.18f, 0.18f, 0.03f),
+                Engine.PrimitiveFactory.ItemColor(Item));                          // item icon
+
+            var textGO = new GameObject("Text");
+            textGO.transform.SetParent(go.transform, false);
+            textGO.transform.localPosition = new Vector3(-0.13f, 0f, -0.02f);
+            badge = textGO.AddComponent<TextMesh>();
             badge.fontSize = 42;
-            badge.characterSize = 0.08f;
-            badge.anchor = TextAnchor.MiddleCenter;
-            badge.alignment = TextAlignment.Center;
+            badge.characterSize = 0.06f;
+            badge.anchor = TextAnchor.MiddleLeft;
+            badge.alignment = TextAlignment.Left;
             badge.color = Color.white;
             var font = Engine.HUDBuilder.UIFont;
             if (font != null)
             {
                 badge.font = font;
-                var mr = go.GetComponent<MeshRenderer>();
+                var mr = textGO.GetComponent<MeshRenderer>();
                 if (mr != null) mr.material = font.material;
             }
-            go.AddComponent<Billboard>();
 
             // Reference-style "restock this shelf" indicator: a small downward-pointing
             // yellow arrow that floats above the shelf when it needs stocking. Hidden
