@@ -253,7 +253,7 @@ namespace MiniMart.UI
             AddMachineBlock(tabContents[1], "Coffee Bar", RowMachines, font, gm.CoffeeDispenser);
 
             // Animals tab.
-            AddCoopBlock(tabContents[2], "Chickens", RowAnimals, font, gm.HenCoop);
+            AddCoopBlock(tabContents[2], "Hen Coop", RowAnimals, font, gm.HenCoop);   // was "Chickens" — match the world's "Hen" naming
             AddCowBlock(tabContents[2], "Cow", RowAnimals, font, gm.CowPen);
 
             ShowTab(0);

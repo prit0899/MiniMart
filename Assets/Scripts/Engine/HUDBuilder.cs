@@ -526,22 +526,35 @@ namespace MiniMart.Engine
                 new Vector2(-160, -260), new Vector2(160, 34));
             string[] gfxNames = { "LOW", "MED", "HIGH" };
             var gfxPresets = new[] { Core.QualityPreset.LowPower, Core.QualityPreset.Balanced, Core.QualityPreset.High };
+            // Playtest UX: the three quality buttons had NO selected state — you
+            // couldn't tell which preset was active. Track them and highlight the
+            // chosen one (green) while the rest read as dim/unselected.
+            var gfxSelected = new Color(0.32f, 0.80f, 0.38f);
+            var gfxIdle     = new Color(0.55f, 0.62f, 0.70f);
+            var gfxButtons  = new Image[3];
+            int savedGfx = PlayerPrefs.GetInt("MiniMart_Gfx", 1); // default MED/Balanced
             for (int gi = 0; gi < 3; gi++)
             {
                 int idx = gi;
                 var b = NewButton($"Gfx_{gfxNames[gi]}", settingsPanel.transform, gfxNames[gi],
-                    new Color(0.42f, 0.78f, 0.95f), out _);
+                    gfxIdle, out _);
                 SetAnchored(b.GetComponent<RectTransform>(), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0.5f, 1),
                     new Vector2(20 + gi * 100, -260), new Vector2(90, 44));
-                RoundCorners(b.GetComponent<Image>(), 12f);
+                var bImg = b.GetComponent<Image>();
+                RoundCorners(bImg, 12f);
+                gfxButtons[gi] = bImg;
                 b.onClick.AddListener(() =>
                 {
                     var gm = MiniMart.GameManager.Instance;
                     if (gm != null) gm.ApplyQualityPreset(gfxPresets[idx]);
                     PlayerPrefs.SetInt("MiniMart_Gfx", idx);
                     PlayerPrefs.Save();
+                    for (int k = 0; k < 3; k++)
+                        if (gfxButtons[k] != null) gfxButtons[k].color = k == idx ? gfxSelected : gfxIdle;
                 });
             }
+            for (int k = 0; k < 3; k++)
+                if (gfxButtons[k] != null) gfxButtons[k].color = k == savedGfx ? gfxSelected : gfxIdle;
 
             // Version tag (bottom-right of settings panel).
             var verText = NewText("VersionText", settingsPanel.transform, GameVersion, 18, TextAnchor.LowerRight);
